@@ -1,0 +1,42 @@
+{
+  "name": "@fanxiaoshuo/agents",
+  "version": "0.1.0",
+  "private": true,
+  "description": "梵小说 AI 管道包：Vercel AI SDK 统一模型网关、用量计量与 Mastra 多 Agent 运行时底座",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "node ../../scripts/clean.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.107",
+    "@ai-sdk/google": "4.0.124",
+    "@ai-sdk/openai": "^4.0.122",
+    "@ai-sdk/openai-compatible": "^3.0.94",
+    "@fanxiaoshuo/shared": "workspace:*",
+    "@mastra/core": "^1.85.0",
+    "ai": "7.0.180",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.1"
+  }
+}

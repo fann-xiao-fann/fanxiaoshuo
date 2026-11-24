@@ -1,0 +1,17 @@
+/**
+ * @fanxiaoshuo/agents — 梵小说 AI 管道包。
+ *
+ * 目录所有权：AI Pipeline Agent。
+ * 对外只暴露稳定业务 API：统一 LLM 网关、用量计量、Mastra 运行时门面与写书角色定义。
+ * 严禁从本包导出 Mastra / AI SDK 的内部不稳定类型。
+ */
+export * from './gateway/types.js';
+export * from './gateway/errors.js';
+export * from './gateway/cost.js';
+export * from './gateway/sanitize.js';
+export * from './gateway/provider-factory.js';
+export * from './gateway/model-gateway.js';
+export * from './gateway/usage.js';
+
+export * from './runtime/roles.js';
+export * from './runtime/create-runtime.js';
