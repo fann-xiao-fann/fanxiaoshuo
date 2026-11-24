@@ -4,9 +4,9 @@
 
 ## 1. Monorepo 骨架、Docker 基础设施与共享契约（串行前置，锁死契约）
 
-- [ ] 1.1 `[infra]` 初始化 pnpm workspace 根配置（`package.json`、`pnpm-workspace.yaml`、`tsconfig.base.json`、跨平台 `dev`/`build`/`typecheck`/`test`/`db:migrate` 脚本）并确认在 Windows PowerShell 与 Git Bash 下均可解析执行
-- [ ] 1.2 `[infra]` 编写 `infra/docker-compose.yml`（`pgvector/pgvector:pg17` 与 `redis:7-alpine`，含命名卷与 healthcheck）、`infra/init-db.sql`（启用 `vector` 扩展）与 `.env.example`（含 `DATABASE_URL`、`REDIS_URL`、`APP_ENCRYPTION_KEY` 生成说明）
-- [ ] 1.3 `[shared]` 创建 `packages/shared` 包，使用 Zod 定义全量共享契约：4 个写书 Agent 角色枚举（`showrunner`/`lorekeeper`/`writer`/`critic`）、Provider/Model/RoleBinding DTO、UsageLog 分页与汇总 DTO、Health 响应结构、SmokeJob 与 SSE 事件类型及统一错误码，并补齐契约单元测试且通过 `typecheck` 与 `test`
+- [x] 1.1 `[infra]` 初始化 pnpm workspace 根配置（`package.json`、`pnpm-workspace.yaml`、`tsconfig.base.json`、跨平台 `dev`/`build`/`typecheck`/`test`/`db:migrate` 脚本）并确认在 Windows PowerShell 与 Git Bash 下均可解析执行
+- [x] 1.2 `[infra]` 编写 `infra/docker-compose.yml`（`pgvector/pgvector:pg17` 与 `redis:7-alpine`，含命名卷与 healthcheck）、`infra/init-db.sql`（启用 `vector` 扩展）与 `.env.example`（含 `DATABASE_URL`、`REDIS_URL`、`APP_ENCRYPTION_KEY` 生成说明）
+- [x] 1.3 `[shared]` 创建 `packages/shared` 包，使用 Zod 定义全量共享契约：4 个写书 Agent 角色枚举（`showrunner`/`lorekeeper`/`writer`/`critic`）、Provider/Model/RoleBinding DTO、UsageLog 分页与汇总 DTO、Health 响应结构、SmokeJob 与 SSE 事件类型及统一错误码，并补齐契约单元测试且通过 `typecheck` 与 `test`
 
 ## 2. 统一 LLM 网关与 Mastra 多 Agent 运行时底座（可在第 1 组完成后并行）
 

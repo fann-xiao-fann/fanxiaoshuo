@@ -1,0 +1,57 @@
+# 梵小说（FanXiaoshuo）本地基础设施
+# 启动： docker compose --project-directory infra -f infra/docker-compose.yml up -d
+# 或使用根目录脚本： pnpm docker:up
+# 需要自定义端口/账号时，在仓库根目录准备好 .env 后追加 `--env-file .env`：
+#   docker compose --project-directory infra -f infra/docker-compose.yml --env-file .env up -d
+
+name: fanxiaoshuo
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: fanxiaoshuo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fanxiaoshuo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fanxiaoshuo}
+      POSTGRES_DB: ${POSTGRES_DB:-fanxiaoshuo}
+      TZ: ${TZ:-UTC}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # 首次创建数据卷时自动执行，启用 pgvector 扩展供后续语义记忆检索使用
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-fanxiaoshuo} -d ${POSTGRES_DB:-fanxiaoshuo}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: fanxiaoshuo-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--appendfsync', 'everysec']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  pg_data:
+    name: fanxiaoshuo_pg_data
+  redis_data:
+    name: fanxiaoshuo_redis_data

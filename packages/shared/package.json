@@ -1,0 +1,35 @@
+{
+  "name": "@fanxiaoshuo/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "梵小说共享契约包：Zod Schema、API/SSE DTO、Agent 角色枚举与统一错误码（前后端与 Worker 唯一真相来源）",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "node ../../scripts/clean.mjs"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.1"
+  }
+}

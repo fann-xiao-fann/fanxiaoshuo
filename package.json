@@ -1,0 +1,33 @@
+{
+  "name": "fanxiaoshuo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "梵小说（FanXiaoshuo）— 内部批量网文创作 AI 工作台 Monorepo",
+  "type": "module",
+  "packageManager": "pnpm@12.23.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --if-present run dev",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "test:watch": "pnpm -r --parallel --if-present run test:watch",
+    "lint": "pnpm -r --if-present run lint",
+    "clean": "node scripts/clean.mjs",
+    "env:init": "node scripts/init-env.mjs",
+    "docker:up": "docker compose --project-directory infra -f infra/docker-compose.yml up -d",
+    "docker:down": "docker compose --project-directory infra -f infra/docker-compose.yml down",
+    "docker:reset": "docker compose --project-directory infra -f infra/docker-compose.yml down -v",
+    "docker:logs": "docker compose --project-directory infra -f infra/docker-compose.yml logs -f",
+    "db:generate": "pnpm --filter @fanxiaoshuo/server --if-present run db:generate",
+    "db:migrate": "pnpm --filter @fanxiaoshuo/server --if-present run db:migrate"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.1"
+  }
+}
