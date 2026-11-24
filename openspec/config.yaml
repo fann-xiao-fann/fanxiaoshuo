@@ -1,0 +1,48 @@
+schema: spec-driven
+
+context: |
+  项目名称：梵小说（FanXiaoshuo）
+  产品定位：内部批量网文创作工作台（非对外商业 SaaS，不做支付网关、公开论坛/榜单或复杂社区）。
+  核心目标：支撑个人/小团队高效完成「立项起盘 → 设定集维护 → 批量拆细纲 → 逐章连贯成文 → 自动审稿返工 → 审校导出」全流程。
+  开发节奏：单人业余推进 + 多 AI Coding Agent（Pi / Codex / Antigravity）并行协作，优先清晰边界与可维护性。
+
+  固定技术栈（禁止擅自替换）：
+  - Monorepo：pnpm workspaces + TypeScript（strict mode），Node.js >= 22，Windows 本地开发优先兼容（路径与脚本需支持 Windows PowerShell 与 Bash）。
+  - 共享契约：packages/shared（Zod schemas、API 请求/响应 DTO、SSE 事件类型、领域枚举与错误码，作为前后端与 Worker 的唯一真相来源）。
+  - 前端（apps/web）：Vue 3 + TypeScript + Vite + Pinia + Vue Router + Naive UI（明暗双主题）+ TipTap（后续章节编辑器）。
+  - 后端 API（apps/server）：Fastify + TypeScript + Drizzle ORM + PostgreSQL（Docker，使用 pgvector 镜像以便后续长文语义记忆检索）。
+  - 队列与实时总线：Redis（Docker）+ BullMQ（任务队列、并发限流、指数退避重试、断点续跑）+ Redis Pub/Sub 转发 SSE 进度。
+  - 运行期多 Agent 编排（packages/agents + apps/worker）：Vercel AI SDK（ai + @ai-sdk/openai-compatible 及主流 Provider 适配）+ Mastra（TypeScript-native Multi-Agent + Durable Workflows + Postgres 存储）。
+    核心写书 Agent 角色边界：Showrunner（总编策划）、Lorekeeper（设定记忆档案员）、ChapterWriter（执笔写手）、Critic（审稿质检与返工裁判）。
+  - 基础设施（infra/）：Docker Compose 管理 PostgreSQL（pgvector/pgvector:pg17）与 Redis（redis:7-alpine），支持健康检查与命名卷持久化。
+
+  强制工程红线：
+  - Clean-room 原则：仅对齐产品功能形态与交互体验，所有代码、样式、Prompt、文案与品牌视觉必须完全原创，严禁复制外部站点源码或素材。
+  - 契约先行：跨包数据结构必须先在 packages/shared 定义 Zod Schema，前后端与 Worker 共享类型。
+  - 密钥与成本安全：LLM API Key 加密或安全存放，禁止明文写入日志或 Git；所有 LLM 调用必须经统一网关记录模型、Token 消耗与估算费用，批量任务必须支持预算熔断上限。
+  - 多 Coding Agent 协作边界：每个 task 必须显式标注归属目录（如 [shared]、[infra]、[server]、[agents]、[worker]、[web]），便于多 Agent 基于 git worktree 并行开发且互不冲突。
+
+rules:
+  proposal:
+    - 保持简洁聚焦，明确列出「范围内（In Scope）」与「明确不做（Out of Scope）」。
+    - 必须说明本次变更对多 Agent 架构（开发期协作或运行期写书 Agent）的影响。
+    - 全部使用中文撰写（技术术语、路径与标识符保留英文）。
+  specs:
+    - 遵循 OpenSpec Delta Spec 规范，使用 ADDED/MODIFIED/REMOVED Requirements 与 Given/When/Then（或 WHEN/THEN）可测试场景。
+    - 每个需求必须可独立验收，避免模糊形容词。
+  design:
+    - 明确数据表结构、API/SSE 契约、目录所有权边界、关键技术取舍（Decisions & Trade-offs）及风险兜底。
+    - 涉及批量或 AI 调用时必须说明失败重试、断点续跑与费用/限流控制。
+  tasks:
+    - 按执行依赖分阶段组织，每条任务控制在 30–90 分钟可完成粒度，并附带模块归属标签（[infra]/[shared]/[server]/[agents]/[worker]/[web]）。
+    - 明确标出哪些任务组可在 shared 契约完成后通过 git worktree 并行执行。
+    - 每个 Change 必须以可执行的验证任务结尾（typecheck、lint、测试、本地端到端冒烟验证）。
+
+operations:
+  apply:
+    guidance:
+      - 实施前先核对 packages/shared 契约与当前 worktree 分支范围，不得越界修改未分配目录。
+      - 每次完成一个任务组后立即勾选 tasks.md 并运行对应包的 typecheck/test。
+  archive:
+    guidance:
+      - 归档前确认所有验收项通过，并在结束时简明总结已同步的主规格与遗留后续项。
