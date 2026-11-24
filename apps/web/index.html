@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="梵小说 · 内部批量创作台：多 Agent 网文创作工作台" />
+    <title>梵小说 · 内部批量创作台</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23e2a355'/%3E%3Cstop offset='1' stop-color='%23b45309'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='%23161a21'/%3E%3Cpath d='M17 20h30v6H17zM17 38h30v6H17z' fill='url(%23g)'/%3E%3Cpath d='M28 12h8v40h-8z' fill='url(%23g)' opacity='.75'/%3E%3C/svg%3E"
+    />
+    <!--
+      首屏防闪白：在样式表与 JS bundle 加载前同步读取主题偏好，
+      先给 <html> 挂 dark 类并写入深色底色变量，确保暗色模式刷新时首绘即为深色。
+    -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var THEME_KEY = 'fx.ui.theme';
+        var theme = 'light';
+        try {
+          var stored = window.localStorage.getItem(THEME_KEY);
+          if (stored === 'light' || stored === 'dark') {
+            theme = stored;
+          } else if (
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          ) {
+            theme = 'dark';
+          }
+        } catch (error) {
+          /* localStorage 被禁用时保持浅色，不影响首屏渲染 */
+        }
+        var isDark = theme === 'dark';
+        root.classList.toggle('dark', isDark);
+        root.setAttribute('data-theme', theme);
+        root.style.colorScheme = theme;
+        root.style.setProperty('--fx-bg-body', isDark ? '#0b0f14' : '#f5f7fa');
+        root.style.backgroundColor = isDark ? '#0b0f14' : '#f5f7fa';
+      })();
+    </script>
+    <style>
+      html {
+        background-color: #f5f7fa;
+      }
+      html.dark {
+        background-color: #0b0f14;
+      }
+      html,
+      body,
+      #app {
+        min-height: 100%;
+      }
+      body {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
