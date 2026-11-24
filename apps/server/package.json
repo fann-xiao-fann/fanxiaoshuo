@@ -1,0 +1,53 @@
+{
+  "name": "@fanxiaoshuo/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "梵小说 Fastify API：模型配置中心、用量审计、健康探测与 BullMQ 队列 / SSE 事件网关",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "drizzle"
+  ],
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "clean": "node ../../scripts/clean.mjs"
+  },
+  "dependencies": {
+    "@fanxiaoshuo/agents": "workspace:*",
+    "@fanxiaoshuo/shared": "workspace:*",
+    "@fastify/cors": "11.2.0",
+    "bullmq": "5.81.5",
+    "dotenv": "17.2.3",
+    "drizzle-orm": "0.44.7",
+    "fastify": "5.12.0",
+    "ioredis": "5.9.0",
+    "pg": "8.16.3",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.5",
+    "ai": "7.0.180",
+    "drizzle-kit": "0.31.4",
+    "tsx": "4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "5.1.1"
+  }
+}
