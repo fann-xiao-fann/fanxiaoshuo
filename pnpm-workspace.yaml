@@ -5,3 +5,4 @@ packages:
 # pnpm 默认阻止依赖执行生命周期（build）脚本；esbuild（Vite / Vitest 底层）需要放行。
 allowBuilds:
   esbuild: true
+  msgpackr-extract: true
