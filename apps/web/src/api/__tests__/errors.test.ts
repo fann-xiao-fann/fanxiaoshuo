@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   ApiClientError,
   describeError,
+  extractConflictVersion,
   fallbackErrorCode,
   fieldErrorsOf,
   isApiClientError,
+  isChapterVersionConflict,
   networkError,
   normalizeApiError,
 } from '@/api/errors';
@@ -65,5 +67,43 @@ describe('API 错误解析', () => {
     expect(describeError('boom')).toBe('boom');
     expect(describeError(new Error('boom'))).toBe('boom');
     expect(fieldErrorsOf(new Error('x'))).toEqual({});
+  });
+});
+
+describe('章节乐观锁冲突', () => {
+  it('识别 CHAPTER_VERSION_CONFLICT 并提取 currentVersion', () => {
+    const error = normalizeApiError(409, {
+      code: 'CHAPTER_VERSION_CONFLICT',
+      message: '章节已被其它写入更新',
+      details: [{ path: 'currentVersion', message: '12' }],
+    });
+
+    expect(isChapterVersionConflict(error)).toBe(true);
+    expect(extractConflictVersion(error)).toBe(12);
+  });
+
+  it('缺少 currentVersion 明细时回退扫描任意整数', () => {
+    const error = normalizeApiError(409, {
+      code: 'CHAPTER_VERSION_CONFLICT',
+      message: '章节已被更新',
+      details: [{ path: 'version', message: '当前版本为 8' }],
+    });
+
+    expect(extractConflictVersion(error)).toBe(8);
+  });
+
+  it('非冲突错误与非契约异常安全返回 null', () => {
+    expect(isChapterVersionConflict(new Error('x'))).toBe(false);
+    expect(extractConflictVersion(new Error('x'))).toBeNull();
+    expect(
+      extractConflictVersion(
+        normalizeApiError(404, { code: 'CHAPTER_NOT_FOUND', message: '章节不存在' }),
+      ),
+    ).toBeNull();
+    expect(
+      extractConflictVersion(
+        normalizeApiError(409, { code: 'CHAPTER_VERSION_CONFLICT', message: '冲突' }),
+      ),
+    ).toBeNull();
   });
 });

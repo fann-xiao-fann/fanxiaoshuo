@@ -6,7 +6,7 @@ export const NAV_ITEMS = [
     key: '/books',
     label: '书架',
     caption: 'Books',
-    description: '书库、卷章树与正文编辑（Change 2 规划）',
+    description: '书库、卷章树与正文编辑',
   },
   {
     key: '/workflows',
@@ -36,8 +36,8 @@ export const NAV_ITEMS = [
 
 export type NavKey = (typeof NAV_ITEMS)[number]['key'];
 
-/** 根路径默认主视图：模型配置中心（本变更内完整可用）。 */
-export const DEFAULT_ROUTE_PATH: NavKey = '/models';
+/** 根路径默认主视图：书架（写作者打开工作台即直达作品列表）。 */
+export const DEFAULT_ROUTE_PATH: NavKey = '/books';
 
 export interface PageMeta {
   title: string;
@@ -62,7 +62,18 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/BooksView.vue'),
         meta: {
           title: '书架',
-          description: '书库总览、卷章结构与正文编辑（Change 2）',
+          description: '书库总览、卷章结构与整本导出',
+          eyebrow: '书库',
+          navKey: '/books',
+        } satisfies PageMeta,
+      },
+      {
+        path: 'books/:bookId/:chapterId?',
+        name: 'book-workspace',
+        component: () => import('@/views/BookWorkspaceView.vue'),
+        meta: {
+          title: '写作工作区',
+          description: '卷章目录树、TipTap 长文编辑器与历史版本快照',
           eyebrow: '书库',
           navKey: '/books',
         } satisfies PageMeta,

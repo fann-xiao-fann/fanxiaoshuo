@@ -152,3 +152,44 @@ export function fieldErrorsOf(error: unknown): Record<string, string> {
   }
   return result;
 }
+
+/**
+ * 是否为章节乐观锁版本冲突（`409 CHAPTER_VERSION_CONFLICT`）。
+ * 编辑器据此弹出「重新加载 / 强制覆盖」冲突处理弹窗。
+ */
+export function isChapterVersionConflict(error: unknown): boolean {
+  return isApiClientError(error) && error.code === 'CHAPTER_VERSION_CONFLICT';
+}
+
+/**
+ * 从冲突响应的 `details` 中提取服务端最新版本号。
+ * 服务端约定以 `currentVersion` 字段回传；缺失时回退扫描任意可解析的整数明细。
+ */
+export function extractConflictVersion(error: unknown): number | null {
+  if (!isApiClientError(error) || error.details === undefined) {
+    return null;
+  }
+  const pick = (issue: { path: string; message: string }): number | null => {
+    const matched = /\d+/.exec(issue.message);
+    if (matched === null) {
+      return null;
+    }
+    const parsed = Number.parseInt(matched[0], 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  };
+  for (const issue of error.details) {
+    if (issue.path.toLowerCase().includes('currentversion')) {
+      const version = pick(issue);
+      if (version !== null) {
+        return version;
+      }
+    }
+  }
+  for (const issue of error.details) {
+    const version = pick(issue);
+    if (version !== null) {
+      return version;
+    }
+  }
+  return null;
+}
