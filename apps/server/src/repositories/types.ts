@@ -9,6 +9,12 @@ import type {
   RevisionSource,
   UsageLogStatus,
   UsageSummary,
+  WorkflowMode,
+  WorkflowPauseReason,
+  WorkflowRunConfig,
+  WorkflowRunStatus,
+  WorkflowStepStage,
+  WorkflowStepStatus,
 } from '@fanxiaoshuo/shared';
 import type { AgentRoleBindingInputPayload, CreateProviderInput } from '@fanxiaoshuo/shared';
 import type { UsageLogRecordInput } from '@fanxiaoshuo/agents';
@@ -588,3 +594,141 @@ export type ApplyAiChapterContentOutcome =
     }
   | { readonly status: 'conflict'; readonly chapter: ChapterRecord }
   | { readonly status: 'not_found' };
+
+/* -------------------------------------------------------------------------- */
+/*               Change 4：批量流水线仓储（workflow_runs / workflow_steps）              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 批次领域记录（`books.title` 作为 `bookTitle` 冗余返回，列表 / 详情共用）。
+ * `config` 为创建时冻结的配置快照（已严格符合 `workflowRunConfigSchema`）。
+ */
+export interface WorkflowRunRecord {
+  readonly id: string;
+  readonly bookId: string;
+  readonly bookTitle: string;
+  readonly mode: WorkflowMode;
+  readonly status: WorkflowRunStatus;
+  readonly config: WorkflowRunConfig;
+  readonly totalSteps: number;
+  readonly completedSteps: number;
+  readonly failedSteps: number;
+  /** 预算上限（`null` 表示不限制） */
+  readonly maxCostUsd: number | null;
+  readonly spentCostUsd: number;
+  readonly totalInputTokens: number;
+  readonly totalOutputTokens: number;
+  readonly pauseRequested: boolean;
+  readonly cancelRequested: boolean;
+  readonly pauseReason: WorkflowPauseReason | null;
+  readonly errorCode: ApiErrorCode | null;
+  readonly errorMessage: string | null;
+  readonly startedAt: Date | null;
+  readonly finishedAt: Date | null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+/** 单章步骤领域记录（`criticIssues` 由 `critic_issues_json` 容错归一化而来）。 */
+export interface WorkflowStepRecord {
+  readonly id: string;
+  readonly runId: string;
+  readonly chapterId: string;
+  readonly stepIndex: number;
+  readonly chapterTitleSnapshot: string;
+  readonly status: WorkflowStepStatus;
+  readonly stage: WorkflowStepStage;
+  readonly reworkCount: number;
+  readonly criticScore: number | null;
+  readonly criticPassed: boolean | null;
+  readonly criticSummary: string | null;
+  readonly criticIssues: string[];
+  readonly outputWordCount: number;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly estimatedCostUsd: number;
+  readonly backupRevisionId: string | null;
+  readonly errorCode: ApiErrorCode | null;
+  readonly errorMessage: string | null;
+  readonly startedAt: Date | null;
+  readonly finishedAt: Date | null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+/** 批次详情：批次 + 按 `stepIndex` 升序的全部步骤。 */
+export interface WorkflowRunDetailRecord extends WorkflowRunRecord {
+  readonly steps: readonly WorkflowStepRecord[];
+}
+
+/** 创建批次时同步写入的单章步骤入参（`stepIndex` 由仓储按下标生成）。 */
+export interface CreateWorkflowStepRecordInput {
+  readonly chapterId: string;
+  readonly chapterTitleSnapshot: string;
+}
+
+/** 单事务创建批次 + 全部步骤的入参。 */
+export interface CreateWorkflowRunRecordInput {
+  readonly bookId: string;
+  readonly mode: WorkflowMode;
+  readonly config: WorkflowRunConfig;
+  readonly maxCostUsd: number | null;
+  readonly steps: readonly CreateWorkflowStepRecordInput[];
+}
+
+/** 批次列表筛选（`createdAt DESC` 分页）。 */
+export interface WorkflowRunListFilter {
+  readonly bookId?: string | undefined;
+  readonly status?: WorkflowRunStatus | undefined;
+  readonly page: number;
+  readonly pageSize: number;
+}
+
+/** 批次分页结果。 */
+export interface WorkflowRunPage {
+  readonly items: readonly WorkflowRunRecord[];
+  readonly total: number;
+}
+
+/** 断点续跑入参（可选上调预算上限）。 */
+export interface ResumeWorkflowRunRecordInput {
+  /** `undefined` 保持原值；`null` 解除预算上限 */
+  readonly maxCostUsd?: number | null | undefined;
+}
+
+/**
+ * 批量流水线仓储。
+ *
+ * 所有状态机变更（暂停 / 续跑 / 取消 / 单步重试）均以**单事务**写入，
+ * 保证 Worker 侧读取到的批次汇总字段与步骤真实状态永不脱节。
+ */
+export interface WorkflowRunRepository {
+  /** 按 `createdAt DESC` 分页，附带 `books.title`。 */
+  list(filter: WorkflowRunListFilter): Promise<WorkflowRunPage>;
+  /** 批次详情（含按 `stepIndex ASC` 排序的全部步骤）；不存在返回 null。 */
+  findDetailById(runId: string): Promise<WorkflowRunDetailRecord | null>;
+  /** 单事务写入批次与全部步骤，返回完整详情。 */
+  createWithSteps(input: CreateWorkflowRunRecordInput): Promise<WorkflowRunDetailRecord>;
+  /**
+   * 请求暂停：`queued` 直接收敛为 `paused(USER_PAUSED)`；
+   * `running` 仅置 `pauseRequested`，由 Worker 在安全断点落下暂停。
+   */
+  requestPause(runId: string): Promise<WorkflowRunDetailRecord | null>;
+  /**
+   * 断点续跑：重置 `failed` / `skipped` 步骤为 `pending`（**保留全部 `completed`**），
+   * 清空错误与预算熔断标记后重新置 `queued`；可选上调预算上限。
+   */
+  resume(
+    runId: string,
+    input?: ResumeWorkflowRunRecordInput,
+  ): Promise<WorkflowRunDetailRecord | null>;
+  /**
+   * 取消批次：`queued` / `paused` 立即收敛为 `cancelled` 并把未完成步骤置 `skipped`；
+   * `running` 仅置 `cancelRequested`。
+   */
+  cancel(runId: string): Promise<WorkflowRunDetailRecord | null>;
+  /** 重试单个失败步骤：仅重置该步骤并递减 `failedSteps`，批次重新入队。 */
+  retryStep(runId: string, stepId: string): Promise<WorkflowRunDetailRecord | null>;
+  /** 删除批次（级联清理步骤）；不存在返回 false。 */
+  delete(runId: string): Promise<boolean>;
+}

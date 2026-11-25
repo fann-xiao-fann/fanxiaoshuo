@@ -10,7 +10,9 @@ import { createSecretCodec } from './crypto/secret-codec.js';
 import { createDatabase } from './db/client.js';
 import { createHealthProbes } from './health/probes.js';
 import { createBullMqSmokeQueue } from './queue/bullmq-smoke-queue.js';
+import { createBullMqWorkflowQueue } from './queue/bullmq-workflow-queue.js';
 import { createRedisJobEventBus } from './queue/redis-event-bus.js';
+import { createRedisWorkflowEventBus } from './queue/redis-workflow-event-bus.js';
 import { createDrizzleAgentRoleRepository } from './repositories/drizzle/agent-role-repository.js';
 import { createDrizzleBookOutlineRepository } from './repositories/drizzle/book-outline-repository.js';
 import { createDrizzleBookRepository } from './repositories/drizzle/book-repository.js';
@@ -22,6 +24,7 @@ import { createDrizzleModelRepository } from './repositories/drizzle/model-repos
 import { createDrizzleProviderRepository } from './repositories/drizzle/provider-repository.js';
 import { createDrizzleUsageLogRepository } from './repositories/drizzle/usage-log-repository.js';
 import { createDrizzleVolumeRepository } from './repositories/drizzle/volume-repository.js';
+import { createDrizzleWorkflowRunRepository } from './repositories/drizzle/workflow-run-repository.js';
 import { buildServer } from './server.js';
 import { DEFAULT_SERVER_VERSION } from './server-deps.js';
 
@@ -62,6 +65,7 @@ export async function startServer(): Promise<RunningServer> {
   const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
   const subscriber = redis.duplicate();
   const smokeQueue = createBullMqSmokeQueue({ redisUrl: env.REDIS_URL });
+  const workflowQueue = createBullMqWorkflowQueue({ redisUrl: env.REDIS_URL });
 
   const providers = createDrizzleProviderRepository(db);
   const models = createDrizzleModelRepository(db);
@@ -74,6 +78,7 @@ export async function startServer(): Promise<RunningServer> {
   const bookOutlines = createDrizzleBookOutlineRepository(db);
   const knowledgeCards = createDrizzleKnowledgeCardRepository(db);
   const chapterSummaries = createDrizzleChapterSummaryRepository(db);
+  const workflowRuns = createDrizzleWorkflowRunRepository(db);
 
   const gateway = new ModelGateway({
     usageLogger: async (record) => {
@@ -82,6 +87,7 @@ export async function startServer(): Promise<RunningServer> {
   });
 
   const eventBus = createRedisJobEventBus({ publisher: redis, subscriber });
+  const workflowEventBus = createRedisWorkflowEventBus({ publisher: redis, subscriber });
   const health = createHealthProbes({ postgres: pool, redis });
 
   const app = await buildServer({
@@ -103,6 +109,9 @@ export async function startServer(): Promise<RunningServer> {
     bookOutlines,
     knowledgeCards,
     chapterSummaries,
+    workflowRuns,
+    workflowQueue,
+    workflowEventBus,
     gateway,
     smokeQueue,
     eventBus,
@@ -119,6 +128,7 @@ export async function startServer(): Promise<RunningServer> {
     shuttingDown = true;
     await app.close().catch(() => undefined);
     await smokeQueue.close?.().catch(() => undefined);
+    await workflowQueue.close?.().catch(() => undefined);
     await subscriber.quit().catch(() => undefined);
     await redis.quit().catch(() => undefined);
     await pool.end().catch(() => undefined);

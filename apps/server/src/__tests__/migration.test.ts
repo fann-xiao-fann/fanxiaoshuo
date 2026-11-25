@@ -112,4 +112,40 @@ describe('Drizzle 迁移产物', () => {
     expect(sql).toContain('"characters_present" jsonb DEFAULT \'[]\'::jsonb NOT NULL');
     expect(sql).toContain('"source" text DEFAULT \'manual\' NOT NULL');
   });
+
+  it('SQL 覆盖 Change 4 批量流水线 2 张表、索引与级联外键', () => {
+    const sql = readSql();
+
+    for (const table of ['workflow_runs', 'workflow_steps']) {
+      expect(sql).toContain(`CREATE TABLE "${table}"`);
+    }
+
+    // 索引：按书 + 创建时间、按状态、run 内步骤唯一序号与状态筛选
+    for (const indexName of [
+      'workflow_runs_book_created_idx',
+      'workflow_runs_status_idx',
+      'workflow_steps_run_status_idx',
+    ]) {
+      expect(sql).toContain(`CREATE INDEX "${indexName}"`);
+    }
+    expect(sql).toContain('CREATE UNIQUE INDEX "workflow_steps_run_index_unique"');
+    expect(sql).toContain('("run_id","step_index")');
+
+    // 外键：书籍删除级联清理批次，批次 / 章节删除级联清理步骤
+    expect(sql).toContain('workflow_runs_book_id_books_id_fk');
+    expect(sql).toContain('workflow_steps_run_id_workflow_runs_id_fk');
+    expect(sql).toContain('workflow_steps_chapter_id_chapters_id_fk');
+
+    // 配置快照仅存 jsonb（严格 WorkflowRunConfig）、预算 numeric(12,6)、默认状态字面量
+    expect(sql).toContain('"config_json" jsonb NOT NULL');
+    expect(sql).toContain('"max_cost_usd" numeric(12, 6)');
+    expect(sql).toContain('"spent_cost_usd" numeric(12, 6) DEFAULT \'0\' NOT NULL');
+    expect(sql).toContain('"estimated_cost_usd" numeric(12, 6) DEFAULT \'0\' NOT NULL');
+    expect(sql).toContain('"critic_issues_json" jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+    expect(sql).toContain('"status" text DEFAULT \'queued\' NOT NULL');
+    expect(sql).toContain('"status" text DEFAULT \'pending\' NOT NULL');
+    expect(sql).toContain('"stage" text DEFAULT \'idle\' NOT NULL');
+    expect(sql).toContain('"pause_requested" boolean DEFAULT false NOT NULL');
+    expect(sql).toContain('"cancel_requested" boolean DEFAULT false NOT NULL');
+  });
 });

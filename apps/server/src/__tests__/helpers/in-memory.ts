@@ -36,7 +36,16 @@ import type {
   ChapterSummaryRepository,
   KnowledgeCardRepository,
   VolumeRepository,
+  WorkflowRunRepository,
 } from '../../repositories/types.js';
+import {
+  createFakeWorkflowEventBus,
+  createFakeWorkflowQueue,
+  createInMemoryWorkflowRepositories,
+  type FakeWorkflowEventBus,
+  type FakeWorkflowQueue,
+  type InMemoryWorkflowState,
+} from './in-memory-workflows.js';
 
 /** 测试主密钥（32 字节 hex，仅为测试固定值）。 */
 export const TEST_ENCRYPTION_KEY = 'a'.repeat(64);
@@ -56,6 +65,8 @@ export interface InMemoryStore {
   readonly bookOutlines: BookOutlineRepository;
   readonly knowledgeCards: KnowledgeCardRepository;
   readonly chapterSummaries: ChapterSummaryRepository;
+  /** 批量流水线批次 / 步骤仓储（Change 4） */
+  readonly workflowRuns: WorkflowRunRepository;
   /** 服务端与内存仓储共用的时钟（测试可通过 `clock` 选项注入可控时间）。 */
   readonly clock: () => Date;
   readonly state: {
@@ -73,6 +84,8 @@ export interface InMemoryStore {
     readonly outlines: InMemoryBookBibleState['outlines'];
     readonly cards: InMemoryBookBibleState['cards'];
     readonly summaries: InMemoryBookBibleState['summaries'];
+    readonly workflowRuns: InMemoryWorkflowState['runs'];
+    readonly workflowSteps: InMemoryWorkflowState['steps'];
   };
 }
 
@@ -96,6 +109,10 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
 
   const bookRepositories = createInMemoryBookRepositories({ now });
   const bookBibleRepositories = createInMemoryBookBibleRepositories({ now });
+  const workflowRepositories = createInMemoryWorkflowRepositories({
+    now,
+    resolveBookTitle: (bookId) => bookRepositories.state.books.get(bookId)?.title ?? null,
+  });
 
   const providerRepository: ProviderRepository = {
     async list() {
@@ -314,6 +331,7 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
     bookOutlines: bookBibleRepositories.bookOutlines,
     knowledgeCards: bookBibleRepositories.knowledgeCards,
     chapterSummaries: bookBibleRepositories.chapterSummaries,
+    workflowRuns: workflowRepositories.workflowRuns,
     clock: now,
     state: {
       providers: providerMap,
@@ -327,6 +345,8 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
       outlines: bookBibleRepositories.state.outlines,
       cards: bookBibleRepositories.state.cards,
       summaries: bookBibleRepositories.state.summaries,
+      workflowRuns: workflowRepositories.state.runs,
+      workflowSteps: workflowRepositories.state.steps,
     },
   };
 }
@@ -428,6 +448,8 @@ export interface TestServerOptions {
   readonly gateway?: ModelGateway;
   readonly smokeQueue?: FakeSmokeQueue;
   readonly eventBus?: FakeEventBus;
+  readonly workflowQueue?: FakeWorkflowQueue;
+  readonly workflowEventBus?: FakeWorkflowEventBus;
   readonly health?: HealthProbes;
   readonly sseHeartbeatMs?: number;
   /** 可控时钟（与内存仓储共用，便于测试自动快照节流） */
@@ -442,6 +464,8 @@ export interface TestServerContext {
   readonly store: InMemoryStore;
   readonly smokeQueue: FakeSmokeQueue;
   readonly eventBus: FakeEventBus;
+  readonly workflowQueue: FakeWorkflowQueue;
+  readonly workflowEventBus: FakeWorkflowEventBus;
 }
 
 /** 组装可 `app.inject()` 的完整测试服务器。 */
@@ -450,6 +474,8 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
     options.store ?? createInMemoryStore(options.clock ? { now: options.clock } : {});
   const smokeQueue = options.smokeQueue ?? createFakeSmokeQueue();
   const eventBus = options.eventBus ?? createFakeEventBus();
+  const workflowQueue = options.workflowQueue ?? createFakeWorkflowQueue();
+  const workflowEventBus = options.workflowEventBus ?? createFakeWorkflowEventBus();
 
   const toDeps: ServerDependencies = {
     config: {
@@ -470,6 +496,9 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
     bookOutlines: store.bookOutlines,
     knowledgeCards: store.knowledgeCards,
     chapterSummaries: store.chapterSummaries,
+    workflowRuns: store.workflowRuns,
+    workflowQueue,
+    workflowEventBus,
     gateway: options.gateway ?? new ModelGateway(),
     smokeQueue,
     eventBus,
@@ -482,5 +511,5 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
   };
 
   const app = await buildServer(toDeps);
-  return { app, toDeps, store, smokeQueue, eventBus };
+  return { app, toDeps, store, smokeQueue, eventBus, workflowQueue, workflowEventBus };
 }

@@ -325,3 +325,107 @@ export const chapterSummaries = pgTable(
 export type BookOutlineRow = typeof bookOutlines.$inferSelect;
 export type KnowledgeCardRow = typeof knowledgeCards.$inferSelect;
 export type ChapterSummaryRow = typeof chapterSummaries.$inferSelect;
+
+/* -------------------------------------------------------------------------- */
+/*               Change 4：批量流水线批次 / 章节步骤（workflow_runs / steps）              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 批量流水线 2 张表（见 `openspec/changes/batch-workflows-engine/design.md`）。
+ *
+ * 跨进程契约：`apps/worker` 使用 `pg` SQL 直接读写**完全相同**的表名与列名，
+ * 任何重命名都会在集成阶段立刻暴露，禁止单侧修改。
+ *
+ * - `workflow_runs`：批次主表，`config_json` 仅存 `WorkflowRunConfig`（严格 strict schema），
+ *   状态真相（暂停 / 取消 / 预算）全部落盘，Worker 重启后可完整断点续跑。
+ * - `workflow_steps`：章节步骤表，`(run_id, step_index)` 唯一，按阅读顺序串行推进。
+ *
+ * 默认值使用字面量（而非从 `@fanxiaoshuo/shared` 引入常量），避免 drizzle-kit
+ * 在生成迁移时需要解析工作区包的运行时产物。
+ */
+
+export const workflowRuns = pgTable(
+  'workflow_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id, { onDelete: 'cascade' }),
+    // outline_only | write_chapters | full_pipeline
+    mode: text('mode').notNull(),
+    // queued | running | paused | completed | failed | cancelled
+    status: text('status').notNull().default('queued'),
+    // 创建时冻结的配置快照（仅 WorkflowRunConfig 字段）
+    configJson: jsonb('config_json').notNull(),
+    totalSteps: integer('total_steps').notNull().default(0),
+    completedSteps: integer('completed_steps').notNull().default(0),
+    failedSteps: integer('failed_steps').notNull().default(0),
+    // 预算上限（可空表示不限制），numeric 以字符串读写保证精度
+    maxCostUsd: numeric('max_cost_usd', { precision: 12, scale: 6 }),
+    spentCostUsd: numeric('spent_cost_usd', { precision: 12, scale: 6 })
+      .notNull()
+      .default('0'),
+    totalInputTokens: integer('total_input_tokens').notNull().default(0),
+    totalOutputTokens: integer('total_output_tokens').notNull().default(0),
+    pauseRequested: boolean('pause_requested').notNull().default(false),
+    cancelRequested: boolean('cancel_requested').notNull().default(false),
+    // USER_PAUSED | BUDGET_EXCEEDED | null
+    pauseReason: text('pause_reason'),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }),
+    finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('workflow_runs_book_created_idx').on(table.bookId, table.createdAt),
+    index('workflow_runs_status_idx').on(table.status),
+  ],
+);
+
+export const workflowSteps = pgTable(
+  'workflow_steps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => workflowRuns.id, { onDelete: 'cascade' }),
+    chapterId: uuid('chapter_id')
+      .notNull()
+      .references(() => chapters.id, { onDelete: 'cascade' }),
+    // 0-based 顺序序号（批次内按阅读顺序串行执行）
+    stepIndex: integer('step_index').notNull(),
+    chapterTitleSnapshot: text('chapter_title_snapshot').notNull(),
+    // pending | running | completed | failed | skipped
+    status: text('status').notNull().default('pending'),
+    // idle | planning | writing | reviewing | reworking | summarizing | done
+    stage: text('stage').notNull().default('idle'),
+    reworkCount: integer('rework_count').notNull().default(0),
+    criticScore: integer('critic_score'),
+    criticPassed: boolean('critic_passed'),
+    criticSummary: text('critic_summary'),
+    criticIssuesJson: jsonb('critic_issues_json').$type<string[]>().notNull().default([]),
+    outputWordCount: integer('output_word_count').notNull().default(0),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    estimatedCostUsd: numeric('estimated_cost_usd', { precision: 12, scale: 6 })
+      .notNull()
+      .default('0'),
+    // 写回正文前生成的 source: 'ai' 留底快照 ID
+    backupRevisionId: uuid('backup_revision_id'),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }),
+    finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('workflow_steps_run_index_unique').on(table.runId, table.stepIndex),
+    index('workflow_steps_run_status_idx').on(table.runId, table.status),
+  ],
+);
+
+export type WorkflowRunRow = typeof workflowRuns.$inferSelect;
+export type WorkflowStepRow = typeof workflowSteps.$inferSelect;

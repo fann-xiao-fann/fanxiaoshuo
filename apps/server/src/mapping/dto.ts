@@ -17,6 +17,9 @@ import {
   providerSummarySchema,
   usageLogDtoSchema,
   volumeDtoSchema,
+  workflowRunDetailDtoSchema,
+  workflowRunSummaryDtoSchema,
+  workflowStepDtoSchema,
   type AgentRole,
   type AgentRoleRouteDto,
   type ApiErrorCode,
@@ -35,6 +38,9 @@ import {
   type UsageLogDto,
   type UsageLogStatus,
   type VolumeDto,
+  type WorkflowRunDetailDto,
+  type WorkflowRunSummaryDto,
+  type WorkflowStepDto,
 } from '@fanxiaoshuo/shared';
 import type {
   AgentRoleBindingRecord,
@@ -50,6 +56,9 @@ import type {
   UsageLogRecord,
   VolumeAggregateRecord,
   VolumeRecord,
+  WorkflowRunDetailRecord,
+  WorkflowRunRecord,
+  WorkflowStepRecord,
 } from '../repositories/types.js';
 
 /** 角色未绑定时的默认采样温度（与 `agent_role_bindings.temperature` 默认值一致）。 */
@@ -322,5 +331,74 @@ export function toChapterSummaryDto(record: ChapterSummaryRecord): ChapterSummar
     charactersPresent: record.charactersPresent,
     source: record.source,
     updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*              Change 4：批量流水线 DTO 映射（批次摘要 / 步骤 / 详情）              */
+/* -------------------------------------------------------------------------- */
+
+/** 批次记录 → 批次摘要 DTO（列表项与详情公共字段）。 */
+export function toWorkflowRunSummaryDto(record: WorkflowRunRecord): WorkflowRunSummaryDto {
+  return workflowRunSummaryDtoSchema.parse({
+    id: record.id,
+    bookId: record.bookId,
+    bookTitle: record.bookTitle,
+    mode: record.mode,
+    status: record.status,
+    config: record.config,
+    totalSteps: record.totalSteps,
+    completedSteps: record.completedSteps,
+    failedSteps: record.failedSteps,
+    maxCostUsd: record.maxCostUsd,
+    spentCostUsd: record.spentCostUsd,
+    totalInputTokens: record.totalInputTokens,
+    totalOutputTokens: record.totalOutputTokens,
+    pauseRequested: record.pauseRequested,
+    cancelRequested: record.cancelRequested,
+    pauseReason: record.pauseReason,
+    errorCode: record.errorCode,
+    errorMessage: record.errorMessage,
+    startedAt: record.startedAt ? record.startedAt.toISOString() : null,
+    finishedAt: record.finishedAt ? record.finishedAt.toISOString() : null,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
+/** 单章步骤记录 → 步骤 DTO（审稿问题清单为强类型 `string[]`）。 */
+export function toWorkflowStepDto(record: WorkflowStepRecord): WorkflowStepDto {
+  return workflowStepDtoSchema.parse({
+    id: record.id,
+    runId: record.runId,
+    chapterId: record.chapterId,
+    stepIndex: record.stepIndex,
+    chapterTitleSnapshot: record.chapterTitleSnapshot,
+    status: record.status,
+    stage: record.stage,
+    reworkCount: record.reworkCount,
+    criticScore: record.criticScore,
+    criticPassed: record.criticPassed,
+    criticSummary: record.criticSummary,
+    criticIssues: record.criticIssues,
+    outputWordCount: record.outputWordCount,
+    inputTokens: record.inputTokens,
+    outputTokens: record.outputTokens,
+    estimatedCostUsd: record.estimatedCostUsd,
+    backupRevisionId: record.backupRevisionId,
+    errorCode: record.errorCode,
+    errorMessage: record.errorMessage,
+    startedAt: record.startedAt ? record.startedAt.toISOString() : null,
+    finishedAt: record.finishedAt ? record.finishedAt.toISOString() : null,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
+/** 批次详情记录 → 详情 DTO（步骤保持 `stepIndex` 升序）。 */
+export function toWorkflowRunDetailDto(record: WorkflowRunDetailRecord): WorkflowRunDetailDto {
+  return workflowRunDetailDtoSchema.parse({
+    ...toWorkflowRunSummaryDto(record),
+    steps: record.steps.map(toWorkflowStepDto),
   });
 }

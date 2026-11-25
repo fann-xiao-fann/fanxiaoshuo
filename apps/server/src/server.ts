@@ -16,6 +16,7 @@ import { registerProviderRoutes } from './routes/providers.js';
 import { registerRuntimeRoutes } from './routes/runtime.js';
 import { registerUsageLogRoutes } from './routes/usage-logs.js';
 import { registerVolumeRoutes } from './routes/volumes.js';
+import { registerWorkflowRoutes } from './routes/workflows.js';
 import type { ServerDependencies } from './server-deps.js';
 
 /** 归一化 Fastify 内置客户端错误（如非法 JSON body）为统一 400。 */
@@ -101,6 +102,9 @@ export async function buildServer(deps: ServerDependencies): Promise<FastifyInst
   // Change 3：Book Bible（总大纲 / 设定卡 / 章节摘要）与章内 AI 写作
   registerBookBibleRoutes(app, deps);
   registerChapterAiRoutes(app, deps);
+
+  // Change 4：批量流水线（批次 CRUD / 生命周期控制 / SSE 实时进度）
+  registerWorkflowRoutes(app, deps);
 
   return app;
 }

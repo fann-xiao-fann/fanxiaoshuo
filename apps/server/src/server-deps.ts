@@ -1,6 +1,6 @@
 import type { SecretCodec } from './crypto/secret-codec.js';
 import type { HealthProbes } from './health/probes.js';
-import type { JobEventBus, SmokeQueue } from './queue/types.js';
+import type { JobEventBus, SmokeQueue, WorkflowEventBus, WorkflowQueue } from './queue/types.js';
 import type {
   AgentRoleRepository,
   BookOutlineRepository,
@@ -13,6 +13,7 @@ import type {
   ProviderRepository,
   UsageLogRepository,
   VolumeRepository,
+  WorkflowRunRepository,
 } from './repositories/types.js';
 import type { ModelGateway } from '@fanxiaoshuo/agents';
 
@@ -55,6 +56,12 @@ export interface ServerDependencies {
   readonly knowledgeCards: KnowledgeCardRepository;
   /** 章节细纲 / 剧情摘要仓储（手工维护与 lorekeeper AI 提炼共用） */
   readonly chapterSummaries: ChapterSummaryRepository;
+  /** 批量流水线批次 / 步骤仓储（创建、暂停、续跑、取消、单步重试与删除） */
+  readonly workflowRuns: WorkflowRunRepository;
+  /** BullMQ `novel-workflows` 队列 Producer（载荷仅 `{ runId }`） */
+  readonly workflowQueue: WorkflowQueue;
+  /** Redis `workflowEvents` Pub/Sub 总线（Worker 广播与 SSE 转发共用） */
+  readonly workflowEventBus: WorkflowEventBus;
   /**
    * 自动快照节流间隔（毫秒）。默认 `AUTO_REVISION_INTERVAL_MS`（5 分钟），
    * 测试可注入极小值以覆盖「节流触发 / 节流跳过」两条分支。
