@@ -22,6 +22,7 @@ import { createDrizzleChapterSummaryRepository } from './repositories/drizzle/ch
 import { createDrizzleKnowledgeCardRepository } from './repositories/drizzle/knowledge-card-repository.js';
 import { createDrizzleModelRepository } from './repositories/drizzle/model-repository.js';
 import { createDrizzleProviderRepository } from './repositories/drizzle/provider-repository.js';
+import { createDrizzleToolboxRunRepository } from './repositories/drizzle/toolbox-run-repository.js';
 import { createDrizzleUsageLogRepository } from './repositories/drizzle/usage-log-repository.js';
 import { createDrizzleVolumeRepository } from './repositories/drizzle/volume-repository.js';
 import { createDrizzleWorkflowRunRepository } from './repositories/drizzle/workflow-run-repository.js';
@@ -79,6 +80,7 @@ export async function startServer(): Promise<RunningServer> {
   const knowledgeCards = createDrizzleKnowledgeCardRepository(db);
   const chapterSummaries = createDrizzleChapterSummaryRepository(db);
   const workflowRuns = createDrizzleWorkflowRunRepository(db);
+  const toolboxRuns = createDrizzleToolboxRunRepository(db);
 
   const gateway = new ModelGateway({
     usageLogger: async (record) => {
@@ -110,6 +112,7 @@ export async function startServer(): Promise<RunningServer> {
     knowledgeCards,
     chapterSummaries,
     workflowRuns,
+    toolboxRuns,
     workflowQueue,
     workflowEventBus,
     gateway,

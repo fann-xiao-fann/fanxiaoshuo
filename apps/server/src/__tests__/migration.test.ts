@@ -113,6 +113,43 @@ describe('Drizzle 迁移产物', () => {
     expect(sql).toContain('"source" text DEFAULT \'manual\' NOT NULL');
   });
 
+  it('SQL 覆盖 Change 5 创作工具盒 toolbox_runs 表、3 个索引与 set null 外键', () => {
+    const sql = readSql();
+
+    expect(sql).toContain('CREATE TABLE "toolbox_runs"');
+
+    // 索引：全局时间线、按书回看、按工具筛选
+    for (const indexName of [
+      'toolbox_runs_created_idx',
+      'toolbox_runs_book_created_idx',
+      'toolbox_runs_tool_created_idx',
+    ]) {
+      expect(sql).toContain(`CREATE INDEX "${indexName}"`);
+    }
+    expect(sql).toContain('("book_id","created_at")');
+    expect(sql).toContain('("tool_id","created_at")');
+
+    // 外键：删书后保留历史（ON DELETE SET NULL），不级联清理历史记录
+    expect(sql).toContain('toolbox_runs_book_id_books_id_fk');
+    expect(sql).toMatch(/toolbox_runs_book_id_books_id_fk[\s\S]*ON DELETE set null/);
+
+    // 15 列：工具 / 角色 / 状态 / 归一输入 / 结构化产出 / 计量 / 脱敏错误摘要
+    expect(sql).toContain('"tool_id" varchar(64) NOT NULL');
+    expect(sql).toContain('"book_id" uuid');
+    expect(sql).toContain('"role" varchar(32) NOT NULL');
+    expect(sql).toContain('"status" varchar(16) NOT NULL');
+    expect(sql).toContain('"inputs_json" jsonb NOT NULL');
+    expect(sql).toContain('"output_json" jsonb');
+    expect(sql).toContain('"model_ref" varchar(256)');
+    expect(sql).toContain('"input_tokens" integer DEFAULT 0 NOT NULL');
+    expect(sql).toContain('"output_tokens" integer DEFAULT 0 NOT NULL');
+    expect(sql).toContain('"estimated_cost_usd" numeric(12, 6) DEFAULT \'0\' NOT NULL');
+    expect(sql).toContain('"latency_ms" integer DEFAULT 0 NOT NULL');
+    expect(sql).toContain('"error_code" varchar(64)');
+    expect(sql).toContain('"error_message" text');
+    expect(sql).toContain('"created_at" timestamp with time zone DEFAULT now() NOT NULL');
+  });
+
   it('SQL 覆盖 Change 4 批量流水线 2 张表、索引与级联外键', () => {
     const sql = readSql();
 

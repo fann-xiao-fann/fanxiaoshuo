@@ -10,11 +10,14 @@ import {
   chapterRevisionSummarySchema,
   chapterSummaryDtoSchema,
   chapterTreeItemSchema,
+  getToolboxToolDefinition,
   knowledgeCardDtoSchema,
   modelDtoSchema,
   modelSummarySchema,
   providerDtoSchema,
   providerSummarySchema,
+  toolboxRunDetailSchema,
+  toolboxRunSummarySchema,
   usageLogDtoSchema,
   volumeDtoSchema,
   workflowRunDetailDtoSchema,
@@ -35,6 +38,8 @@ import {
   type ModelSummary,
   type ProviderDto,
   type ProviderSummary,
+  type ToolboxRunDetail,
+  type ToolboxRunSummary,
   type UsageLogDto,
   type UsageLogStatus,
   type VolumeDto,
@@ -53,6 +58,7 @@ import type {
   KnowledgeCardRecord,
   ModelRecord,
   ProviderRecord,
+  ToolboxRunRecord,
   UsageLogRecord,
   VolumeAggregateRecord,
   VolumeRecord,
@@ -400,5 +406,45 @@ export function toWorkflowRunDetailDto(record: WorkflowRunDetailRecord): Workflo
   return workflowRunDetailDtoSchema.parse({
     ...toWorkflowRunSummaryDto(record),
     steps: record.steps.map(toWorkflowStepDto),
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*                 Change 5：创作工具盒运行历史（toolbox_runs）                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 工具运行记录 → 摘要 DTO。
+ *
+ * `toolName` 由当前工具目录补齐（目录调整后历史仍可读），
+ * `overview` / `itemCount` 从结构化产出派生（失败记录为 0 条 + 空串）。
+ */
+export function toToolboxRunSummaryDto(record: ToolboxRunRecord): ToolboxRunSummary {
+  return toolboxRunSummarySchema.parse({
+    id: record.id,
+    toolId: record.toolId,
+    toolName: getToolboxToolDefinition(record.toolId)?.name ?? record.toolId,
+    bookId: record.bookId,
+    role: record.role,
+    status: record.status,
+    overview: record.output?.overview ?? '',
+    itemCount: record.output?.items.length ?? 0,
+    modelRef: record.modelRef,
+    inputTokens: record.inputTokens,
+    outputTokens: record.outputTokens,
+    estimatedCostUsd: record.estimatedCostUsd,
+    latencyMs: record.latencyMs,
+    errorCode: record.errorCode,
+    errorMessage: record.errorMessage,
+    createdAt: record.createdAt.toISOString(),
+  });
+}
+
+/** 工具运行记录 → 详情 DTO（摘要 + 归一输入 + 结构化产出）。 */
+export function toToolboxRunDetailDto(record: ToolboxRunRecord): ToolboxRunDetail {
+  return toolboxRunDetailSchema.parse({
+    ...toToolboxRunSummaryDto(record),
+    inputs: record.inputs,
+    output: record.output,
   });
 }
