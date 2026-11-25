@@ -78,4 +78,38 @@ describe('Drizzle 迁移产物', () => {
     expect(sql).toContain('"deleted_at" timestamp with time zone');
     expect(sql).toContain('"target_chapter_words" integer DEFAULT 3000 NOT NULL');
   });
+
+  it('SQL 覆盖 Change 3 Book Bible 3 张表、pgvector 扩展与索引', () => {
+    const sql = readSql();
+
+    // 迁移顶部必须幂等启用 pgvector 扩展（任意空库可直接执行）。
+    expect(sql).toContain('CREATE EXTENSION IF NOT EXISTS vector;');
+
+    for (const table of ['book_outlines', 'knowledge_cards', 'chapter_summaries']) {
+      expect(sql).toContain(`CREATE TABLE "${table}"`);
+    }
+
+    // 索引：设定卡分类 / 常驻、章节摘要按书
+    for (const indexName of [
+      'knowledge_cards_book_category_sort_idx',
+      'knowledge_cards_book_pinned_idx',
+      'chapter_summaries_book_idx',
+    ]) {
+      expect(sql).toContain(`CREATE INDEX "${indexName}"`);
+    }
+
+    // 外键：书籍删除级联清理总大纲 / 设定卡 / 章节摘要，章节删除级联清理摘要
+    expect(sql).toContain('book_outlines_book_id_books_id_fk');
+    expect(sql).toContain('knowledge_cards_book_id_books_id_fk');
+    expect(sql).toContain('chapter_summaries_chapter_id_chapters_id_fk');
+    expect(sql).toContain('chapter_summaries_book_id_books_id_fk');
+
+    // 不定维向量列 + jsonb 默认空数组 + 来源默认 manual
+    expect(sql).toContain('"embedding" vector');
+    expect(sql).toContain('"aliases" jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+    expect(sql).toContain('"tags" jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+    expect(sql).toContain('"key_events" jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+    expect(sql).toContain('"characters_present" jsonb DEFAULT \'[]\'::jsonb NOT NULL');
+    expect(sql).toContain('"source" text DEFAULT \'manual\' NOT NULL');
+  });
 });

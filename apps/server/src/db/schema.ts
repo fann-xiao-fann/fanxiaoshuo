@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -204,3 +205,123 @@ export type BookRow = typeof books.$inferSelect;
 export type VolumeRow = typeof volumes.$inferSelect;
 export type ChapterRow = typeof chapters.$inferSelect;
 export type ChapterRevisionRow = typeof chapterRevisions.$inferSelect;
+
+/* -------------------------------------------------------------------------- */
+/*              Change 3：Book Bible（总大纲 / 设定卡 / 章节摘要）              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * pgvector 不定维 `vector` 列。
+ *
+ * 不写死维度（如 `vector(1536)`），避免后续更换 768 / 1024 / 3072 维 Embedding
+ * 模型时被迫重建表；驱动层以 `"[0.1,0.2,...]"` 文本往返。
+ */
+export const pgVector = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return 'vector';
+  },
+  toDriver(value: number[]): string {
+    return `[${value.map((item) => (Number.isFinite(item) ? item : 0)).join(',')}]`;
+  },
+  fromDriver(value: unknown): number[] {
+    if (typeof value !== 'string') {
+      return [];
+    }
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) {
+      return [];
+    }
+    const body = trimmed.slice(1, -1).trim();
+    if (body.length === 0) {
+      return [];
+    }
+    return body
+      .split(',')
+      .map((part) => Number(part.trim()))
+      .filter((item) => Number.isFinite(item));
+  },
+});
+
+/**
+ * 全书总大纲（1:1 绑定 `books`）。
+ *
+ * 与 `books` 主表解耦，避免书架列表拉取大段大纲文本；
+ * 无记录时接口返回空字段 + `updatedAt: null`，不返回 404。
+ */
+export const bookOutlines = pgTable('book_outlines', {
+  bookId: uuid('book_id')
+    .primaryKey()
+    .references(() => books.id, { onDelete: 'cascade' }),
+  mainPlot: text('main_plot').notNull().default(''),
+  worldSetting: text('world_setting').notNull().default(''),
+  styleGuide: text('style_guide').notNull().default(''),
+  endingPlan: text('ending_plan').notNull().default(''),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
+
+/**
+ * 结构化设定卡（N:1 绑定 `books`）。
+ *
+ * `category` 取 6 类字面量；`embedding` 为可空不定维向量列，
+ * 未配置 Embedding 模型时保持 null，DTO 仅暴露 `hasEmbedding`。
+ */
+export const knowledgeCards = pgTable(
+  'knowledge_cards',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id, { onDelete: 'cascade' }),
+    // character | world | faction | item | foreshadowing | timeline
+    category: text('category').notNull(),
+    title: text('title').notNull(),
+    summary: text('summary').notNull().default(''),
+    content: text('content').notNull().default(''),
+    aliases: jsonb('aliases').$type<string[]>().notNull().default([]),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    pinned: boolean('pinned').notNull().default(false),
+    sortOrder: integer('sort_order').notNull().default(0),
+    embedding: pgVector('embedding'),
+    embeddingModelRef: text('embedding_model_ref'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('knowledge_cards_book_category_sort_idx').on(
+      table.bookId,
+      table.category,
+      table.sortOrder,
+    ),
+    index('knowledge_cards_book_pinned_idx').on(table.bookId, table.pinned),
+  ],
+);
+
+/**
+ * 章节细纲与剧情摘要（1:1 绑定 `chapters`）。
+ *
+ * 冗余 `book_id` + 索引，便于按书籍一次查出全部摘要，
+ * 再按「卷 → 章」阅读顺序切片前序 N 章摘要。
+ */
+export const chapterSummaries = pgTable(
+  'chapter_summaries',
+  {
+    chapterId: uuid('chapter_id')
+      .primaryKey()
+      .references(() => chapters.id, { onDelete: 'cascade' }),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id, { onDelete: 'cascade' }),
+    outline: text('outline').notNull().default(''),
+    summary: text('summary').notNull().default(''),
+    keyEvents: jsonb('key_events').$type<string[]>().notNull().default([]),
+    charactersPresent: jsonb('characters_present').$type<string[]>().notNull().default([]),
+    // manual | ai
+    source: text('source').notNull().default('manual'),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('chapter_summaries_book_idx').on(table.bookId)],
+);
+
+export type BookOutlineRow = typeof bookOutlines.$inferSelect;
+export type KnowledgeCardRow = typeof knowledgeCards.$inferSelect;
+export type ChapterSummaryRow = typeof chapterSummaries.$inferSelect;

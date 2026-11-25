@@ -1,7 +1,12 @@
 import { API_ERROR_CODES } from '@fanxiaoshuo/shared';
 import { ApiError } from '../errors.js';
 import type { ServerDependencies } from '../server-deps.js';
-import type { BookAggregateRecord, VolumeAggregateRecord, VolumeRecord } from '../repositories/types.js';
+import type {
+  BookAggregateRecord,
+  ChapterRecord,
+  VolumeAggregateRecord,
+  VolumeRecord,
+} from '../repositories/types.js';
 
 /**
  * 书库路由共用的取数与断言工具。
@@ -37,6 +42,18 @@ export async function requireBookAggregate(
     throw bookNotFound();
   }
   return aggregate;
+}
+
+/** 读取章节并校验未软删（Book Bible / AI 写作路由共用）。 */
+export async function requireActiveChapter(
+  deps: ServerDependencies,
+  chapterId: string,
+): Promise<ChapterRecord> {
+  const chapter = await deps.chapters.findById(chapterId);
+  if (!chapter || chapter.deletedAt !== null) {
+    throw chapterNotFound('章节不存在或已在回收站中。');
+  }
+  return chapter;
 }
 
 /** 读取书籍聚合，且必须不在回收站（导出 / 卷章树 / 新建卷章均要求活跃书籍）。 */

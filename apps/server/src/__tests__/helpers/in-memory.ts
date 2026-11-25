@@ -24,10 +24,17 @@ import {
   createInMemoryBookRepositories,
   type InMemoryBookState,
 } from './in-memory-books.js';
+import {
+  createInMemoryBookBibleRepositories,
+  type InMemoryBookBibleState,
+} from './in-memory-book-bible.js';
 import type {
+  BookOutlineRepository,
   BookRepository,
   ChapterRepository,
   ChapterRevisionRepository,
+  ChapterSummaryRepository,
+  KnowledgeCardRepository,
   VolumeRepository,
 } from '../../repositories/types.js';
 
@@ -46,6 +53,9 @@ export interface InMemoryStore {
   readonly volumes: VolumeRepository;
   readonly chapters: ChapterRepository;
   readonly chapterRevisions: ChapterRevisionRepository;
+  readonly bookOutlines: BookOutlineRepository;
+  readonly knowledgeCards: KnowledgeCardRepository;
+  readonly chapterSummaries: ChapterSummaryRepository;
   /** 服务端与内存仓储共用的时钟（测试可通过 `clock` 选项注入可控时间）。 */
   readonly clock: () => Date;
   readonly state: {
@@ -60,6 +70,9 @@ export interface InMemoryStore {
     readonly volumes: InMemoryBookState['volumes'];
     readonly chapters: InMemoryBookState['chapters'];
     readonly revisions: InMemoryBookState['revisions'];
+    readonly outlines: InMemoryBookBibleState['outlines'];
+    readonly cards: InMemoryBookBibleState['cards'];
+    readonly summaries: InMemoryBookBibleState['summaries'];
   };
 }
 
@@ -82,6 +95,7 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
   const logs: UsageLogRecord[] = [];
 
   const bookRepositories = createInMemoryBookRepositories({ now });
+  const bookBibleRepositories = createInMemoryBookBibleRepositories({ now });
 
   const providerRepository: ProviderRepository = {
     async list() {
@@ -297,6 +311,9 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
     volumes: bookRepositories.volumes,
     chapters: bookRepositories.chapters,
     chapterRevisions: bookRepositories.chapterRevisions,
+    bookOutlines: bookBibleRepositories.bookOutlines,
+    knowledgeCards: bookBibleRepositories.knowledgeCards,
+    chapterSummaries: bookBibleRepositories.chapterSummaries,
     clock: now,
     state: {
       providers: providerMap,
@@ -307,6 +324,9 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
       volumes: bookRepositories.state.volumes,
       chapters: bookRepositories.state.chapters,
       revisions: bookRepositories.state.revisions,
+      outlines: bookBibleRepositories.state.outlines,
+      cards: bookBibleRepositories.state.cards,
+      summaries: bookBibleRepositories.state.summaries,
     },
   };
 }
@@ -447,6 +467,9 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
     volumes: store.volumes,
     chapters: store.chapters,
     chapterRevisions: store.chapterRevisions,
+    bookOutlines: store.bookOutlines,
+    knowledgeCards: store.knowledgeCards,
+    chapterSummaries: store.chapterSummaries,
     gateway: options.gateway ?? new ModelGateway(),
     smokeQueue,
     eventBus,

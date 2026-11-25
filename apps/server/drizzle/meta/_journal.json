@@ -15,6 +15,13 @@
       "when": 1795610507741,
       "tag": "0001_colossal_celestials",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795618930745,
+      "tag": "0002_misty_barracuda",
+      "breakpoints": true
     }
   ]
 }

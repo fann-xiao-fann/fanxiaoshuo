@@ -1,6 +1,15 @@
 import { API_ERROR_CODES, uuidSchema } from '@fanxiaoshuo/shared';
+import { toModelGatewayError, sanitizeErrorMessage } from '@fanxiaoshuo/agents';
 import { z, type ZodType } from 'zod';
 import { ApiError, validationErrorFromZod } from '../errors.js';
+
+/** 把网关异常归一化为标准 `ApiError`（错误文本已脱敏，绝不泄露明文 Key）。 */
+export function toGatewayApiError(error: unknown, secrets: readonly string[] = []): ApiError {
+  const gatewayError = toModelGatewayError(error, secrets);
+  return new ApiError(gatewayError.code, sanitizeErrorMessage(gatewayError, secrets), {
+    cause: error,
+  });
+}
 
 /** 使用共享契约 Schema 校验任意外部输入，失败时抛出统一 400 错误。 */
 export function parseOrThrow<T>(schema: ZodType<T>, value: unknown): T {
