@@ -4,8 +4,8 @@
 
 ## 1. 共享领域契约与字数统计工具（串行前置，锁死契约）
 
-- [ ] 1.1 `[shared]` 扩展 `packages/shared` 领域枚举与错误码（`BOOK_STATUSES`、`CHAPTER_STATUSES`、`REVISION_SOURCES`、`EXPORT_FORMATS`，新增 `BOOK_NOT_FOUND`、`VOLUME_NOT_FOUND`、`CHAPTER_NOT_FOUND`、`CHAPTER_VERSION_CONFLICT`、`REVISION_NOT_FOUND` 及其 HTTP 状态映射），并实现前后端共用纯函数 `countNovelWords(text)` 及覆盖中英混排、标点、全角空白、换行的单元测试，确认 `pnpm --filter @fanxiaoshuo/shared test` 通过
-- [ ] 1.2 `[shared]` 新增书库、卷、章、重排、正文保存（含 `expectedVersion` / `forceOverwrite`）、历史快照、回收站与导出查询的完整 Zod Schema 与 DTO 类型导出，补齐正常与非法边界单元测试并验证 `pnpm --filter @fanxiaoshuo/shared build && typecheck && test` 全部通过
+- [x] 1.1 `[shared]` 扩展 `packages/shared` 领域枚举与错误码（`BOOK_STATUSES`、`CHAPTER_STATUSES`、`REVISION_SOURCES`、`EXPORT_FORMATS`，新增 `BOOK_NOT_FOUND`、`VOLUME_NOT_FOUND`、`CHAPTER_NOT_FOUND`、`CHAPTER_VERSION_CONFLICT`、`REVISION_NOT_FOUND` 及其 HTTP 状态映射），并实现前后端共用纯函数 `countNovelWords(text)` 及覆盖中英混排、标点、全角空白、换行的单元测试，确认 `pnpm --filter @fanxiaoshuo/shared test` 通过
+- [x] 1.2 `[shared]` 新增书库、卷、章、重排、正文保存（含 `expectedVersion` / `forceOverwrite`）、历史快照、回收站与导出查询的完整 Zod Schema 与 DTO 类型导出，补齐正常与非法边界单元测试并验证 `pnpm --filter @fanxiaoshuo/shared build && typecheck && test` 全部通过
 
 ## 2. Fastify 后端 API 与 Drizzle 书库/版本快照持久化（第 1 组完成后可并行）
 

@@ -3,22 +3,47 @@ import {
   AGENT_ROLES,
   API_ERROR_CODES,
   API_PREFIX,
+  AUTO_REVISION_INTERVAL_MS,
+  BOOK_STATUSES,
+  BOOK_STATUS_LABELS,
+  CHAPTER_STATUSES,
+  CHAPTER_STATUS_LABELS,
+  DEFAULT_TARGET_CHAPTER_WORDS,
+  EXPORT_FORMATS,
   JOB_RETRY_POLICY,
+  MAX_CHAPTER_CONTENT_LENGTH,
   PAGINATION,
   PROVIDER_PROTOCOLS,
   QUEUE_NAMES,
   REDIS_CHANNELS,
   REDIS_KEYS,
+  REVISION_SOURCES,
+  REVISION_SOURCE_LABELS,
   SSE_EVENT_NAMES,
   USAGE_SCENES,
   WORKER_HEARTBEAT,
   agentRoleSchema,
   apiErrorSchema,
+  bookDtoSchema,
+  bookExportQuerySchema,
+  bookListQuerySchema,
+  bookTreeResponseSchema,
+  chapterDetailDtoSchema,
+  chapterRevisionSummarySchema,
+  chapterSaveResponseSchema,
+  countNovelWords,
+  createBookSchema,
   createProviderSchema,
   healthResponseSchema,
   jobEventSchema,
   providerDtoSchema,
+  restoreChapterRevisionResponseSchema,
+  reorderChaptersSchema,
+  reorderVolumesSchema,
+  saveChapterContentSchema,
+  updateBookSchema,
   usageLogStatusSchema,
+  volumeDtoSchema,
 } from '../index.js';
 
 describe('barrel 导出（前后端 / Worker 统一入口）', () => {
@@ -33,6 +58,45 @@ describe('barrel 导出（前后端 / Worker 统一入口）', () => {
     expect(healthResponseSchema).toBeDefined();
     expect(jobEventSchema).toBeDefined();
     expect(apiErrorSchema).toBeDefined();
+  });
+});
+
+describe('Change 2 书库 / 编辑器契约 barrel 导出', () => {
+  it('导出书籍、卷章、快照与导出相关枚举', () => {
+    expect(BOOK_STATUSES).toHaveLength(4);
+    expect(CHAPTER_STATUSES).toHaveLength(4);
+    expect(REVISION_SOURCES).toHaveLength(4);
+    expect(EXPORT_FORMATS).toHaveLength(2);
+    expect(BOOK_STATUS_LABELS.ongoing).toBe('连载中');
+    expect(CHAPTER_STATUS_LABELS.final).toBe('定稿');
+    expect(REVISION_SOURCE_LABELS.restore).toBe('回滚备份');
+  });
+
+  it('导出书库运行常量', () => {
+    expect(AUTO_REVISION_INTERVAL_MS).toBe(300_000);
+    expect(MAX_CHAPTER_CONTENT_LENGTH).toBe(500_000);
+    expect(DEFAULT_TARGET_CHAPTER_WORDS).toBe(3000);
+  });
+
+  it('导出全部新增 Zod Schema', () => {
+    expect(bookDtoSchema).toBeDefined();
+    expect(bookListQuerySchema).toBeDefined();
+    expect(bookTreeResponseSchema).toBeDefined();
+    expect(createBookSchema).toBeDefined();
+    expect(updateBookSchema).toBeDefined();
+    expect(volumeDtoSchema).toBeDefined();
+    expect(reorderVolumesSchema).toBeDefined();
+    expect(chapterDetailDtoSchema).toBeDefined();
+    expect(reorderChaptersSchema).toBeDefined();
+    expect(saveChapterContentSchema).toBeDefined();
+    expect(chapterSaveResponseSchema).toBeDefined();
+    expect(chapterRevisionSummarySchema).toBeDefined();
+    expect(restoreChapterRevisionResponseSchema).toBeDefined();
+    expect(bookExportQuerySchema).toBeDefined();
+  });
+
+  it('导出前后端共用字数统计函数', () => {
+    expect(countNovelWords('你好 world')).toBe(3);
   });
 });
 

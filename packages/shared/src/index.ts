@@ -5,10 +5,13 @@
  * 服务端 / Worker / 前端禁止各自定义重复类型。
  */
 export * from './constants/agent-roles.js';
+export * from './constants/books.js';
 export * from './constants/provider-protocols.js';
 export * from './constants/runtime.js';
 
 export * from './errors.js';
+
+export * from './utils/word-count.js';
 
 export * from './schemas/primitives.js';
 export * from './schemas/provider.js';
@@ -17,3 +20,7 @@ export * from './schemas/agent-role-binding.js';
 export * from './schemas/usage-log.js';
 export * from './schemas/health.js';
 export * from './schemas/runtime-job.js';
+export * from './schemas/book.js';
+export * from './schemas/volume.js';
+export * from './schemas/chapter.js';
+export * from './schemas/chapter-revision.js';

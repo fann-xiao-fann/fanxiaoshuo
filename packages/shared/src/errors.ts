@@ -45,6 +45,16 @@ export const API_ERROR_CODES = {
   QUEUE_UNAVAILABLE: 'QUEUE_UNAVAILABLE',
   /** 后台任务不存在 */
   JOB_NOT_FOUND: 'JOB_NOT_FOUND',
+  /** 书籍不存在（或已彻底删除） */
+  BOOK_NOT_FOUND: 'BOOK_NOT_FOUND',
+  /** 分卷不存在（或不属于目标书籍） */
+  VOLUME_NOT_FOUND: 'VOLUME_NOT_FOUND',
+  /** 章节不存在（或不属于目标书籍） */
+  CHAPTER_NOT_FOUND: 'CHAPTER_NOT_FOUND',
+  /** 章节乐观锁版本过期（携带服务端最新 version） */
+  CHAPTER_VERSION_CONFLICT: 'CHAPTER_VERSION_CONFLICT',
+  /** 章节历史快照不存在 */
+  REVISION_NOT_FOUND: 'REVISION_NOT_FOUND',
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERROR_CODES;
@@ -79,6 +89,11 @@ export const API_ERROR_HTTP_STATUS: Record<ApiErrorCode, number> = {
   BUDGET_EXCEEDED: 402,
   QUEUE_UNAVAILABLE: 503,
   JOB_NOT_FOUND: 404,
+  BOOK_NOT_FOUND: 404,
+  VOLUME_NOT_FOUND: 404,
+  CHAPTER_NOT_FOUND: 404,
+  CHAPTER_VERSION_CONFLICT: 409,
+  REVISION_NOT_FOUND: 404,
 };
 
 /** 字段级校验问题（由 ZodError.issues 投影而来，路径用 `.` 连接）。 */

@@ -55,3 +55,27 @@ describe('apiErrorSchema', () => {
     expect(apiErrorSchema.safeParse({ code: 'NOT_FOUND' }).success).toBe(false);
   });
 });
+
+describe('Change 2 书库 / 编辑器专用错误码', () => {
+  it('新增错误码字面量与 HTTP 状态映射符合契约', () => {
+    expect(API_ERROR_CODES.BOOK_NOT_FOUND).toBe('BOOK_NOT_FOUND');
+    expect(API_ERROR_CODES.VOLUME_NOT_FOUND).toBe('VOLUME_NOT_FOUND');
+    expect(API_ERROR_CODES.CHAPTER_NOT_FOUND).toBe('CHAPTER_NOT_FOUND');
+    expect(API_ERROR_CODES.CHAPTER_VERSION_CONFLICT).toBe('CHAPTER_VERSION_CONFLICT');
+    expect(API_ERROR_CODES.REVISION_NOT_FOUND).toBe('REVISION_NOT_FOUND');
+
+    expect(apiErrorStatus('BOOK_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('VOLUME_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('CHAPTER_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('REVISION_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('CHAPTER_VERSION_CONFLICT')).toBe(409);
+  });
+
+  it('既有关键错误码保持原有状态码（不破坏 Change 1 契约）', () => {
+    expect(apiErrorStatus('VALIDATION_ERROR')).toBe(400);
+    expect(apiErrorStatus('NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('CONFLICT')).toBe(409);
+    expect(apiErrorStatus('MODEL_IN_USE')).toBe(409);
+    expect(apiErrorStatus('QUEUE_UNAVAILABLE')).toBe(503);
+  });
+});
