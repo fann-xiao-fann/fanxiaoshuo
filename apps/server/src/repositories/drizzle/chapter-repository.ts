@@ -226,12 +226,13 @@ export function createDrizzleChapterRepository(db: Database): ChapterRepository 
       input: ApplyAiChapterContentRecordInput,
     ): Promise<ApplyAiChapterContentOutcome> {
       return db.transaction(async (tx) => {
-        // 1. 读取活跃章节（已软删视为不存在）。
+        // 1. 行锁读取活跃章节（已软删视为不存在），防止并发抢占提交孤立快照。
         const [current] = await tx
           .select()
           .from(chapters)
           .where(and(eq(chapters.id, input.chapterId), isNull(chapters.deletedAt)))
-          .limit(1);
+          .limit(1)
+          .for('update');
 
         if (!current) {
           return { status: 'not_found' };

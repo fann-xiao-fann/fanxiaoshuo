@@ -408,6 +408,7 @@ async function streamChapterWriting(
       ),
     );
 
+    const maxOutputTokens = input.maxOutputTokens ?? resolved.maxTokens ?? undefined;
     gatewayStream = deps.gateway.streamText({
       config: resolved.config,
       role: input.role,
@@ -415,7 +416,7 @@ async function streamChapterWriting(
       system: assembled.systemPrompt,
       prompt: assembled.userPrompt,
       temperature: input.temperature ?? resolved.temperature,
-      ...(input.maxOutputTokens !== undefined ? { maxOutputTokens: input.maxOutputTokens } : {}),
+      ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
       abortSignal: abortController.signal,
       usageLogger,
     });

@@ -2,7 +2,7 @@
 
 面向内部批量网文创作的 **AI 工作台**：用一组分工明确的写书 Agent 串起「立项起盘 → 设定集维护 → 拆细纲 → 逐章成文 → 审稿返工 → 校审导出」流水线，并提供模型配置、Token/费用计量与基础设施健康诊断。
 
-> 本仓库为 **pnpm + TypeScript（strict）Monorepo**。当前已完成 **Change 1**（工作区骨架 / 契约 / 模型配置中心 / 运行期底座 / 工作台外壳）与 **Change 2**（书架书库、卷章目录树、TipTap 长文编辑器、历史快照与安全回滚、整本导出 TXT/MD）。
+> 本仓库为 **pnpm + TypeScript（strict）Monorepo**。当前已完成 **Change 1**（工作区骨架 / 契约 / 模型配置中心 / 运行期底座 / 工作台外壳）、**Change 2**（书架书库、卷章目录树、TipTap 长文编辑器、历史快照与安全回滚、整本导出 TXT/MD）与 **Change 3**（Book Bible 设定记忆层、预算感知上下文组装、编辑器内流式 AI 写作与原子 AI 快照留底应用）。
 
 ---
 
@@ -86,7 +86,7 @@ pnpm env:init
 # 2）启动 PostgreSQL(pgvector) + Redis 容器
 pnpm docker:up
 
-# 3）执行数据库迁移（创建 4 张核心表；可重复执行，幂等）
+# 3）执行数据库迁移（创建全部 11 张核心表，含 pgvector 向量列；可重复执行，幂等）
 pnpm db:migrate
 
 # 4）同时启动 server + worker + web 开发进程
@@ -111,7 +111,7 @@ pnpm dev
 2. 在 Provider 下新增模型并配置输入/输出单价。
 3. 为 4 个写书角色绑定默认模型，点击「一键测通」验证连通性（会真实调用并落盘用量日志）。
 4. 打开 `/runtime` 确认 PG / Redis / Worker 诊断卡片全部绿色，触发一次冒烟任务观察 SSE 状态流转。
-5. 打开 `/books` 新建作品 → 进入 `/books/:bookId` 建卷建章 → 在 TipTap 编辑器里写正文并「保存」→「保存快照」留底、随时回滚 → 「导出」整本 TXT / Markdown。
+5. 打开 `/books` 新建作品 → 进入 `/books/:bookId` 建卷建章 → 在右侧「设定集」维护全书总大纲与 6 类设定卡、在「本章记忆」编写细纲或调用 `lorekeeper` 一键提炼摘要 → 在「AI 写作」预览 Token 预算并发起续写/扩写/改写/润色流式生成，确认后自动留底 `ai` 快照写回正文 → 随时在历史版本一键回滚或「导出」整本 TXT / Markdown。
 
 ---
 
@@ -206,6 +206,19 @@ pnpm --filter @fanxiaoshuo/web run typecheck
 | GET/POST | `/chapters/:chapterId/revisions` | 历史快照列表（倒序）与手动留底（返回快照详情，含正文） |
 | GET | `/chapters/:chapterId/revisions/:revisionId` | 快照详情（回滚前预览） |
 | POST | `/chapters/:chapterId/revisions/:revisionId/restore` | 安全回滚：先把当前正文自动留底为 `restore` 快照，再写入历史正文 |
+
+### 设定记忆层（Book Bible）与章内流式 AI 写作（Change 3）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET/PUT | `/books/:bookId/outline` | 读取 / 保存全书总大纲（主线、世界观概览、文风与禁忌、结局规划；新书默认返回空结构） |
+| GET/POST | `/books/:bookId/cards` | 6 类设定卡列表（支持 `category` / `q` / `pinned` 筛选）与新建（含 pgvector 向量列预留） |
+| GET/PATCH/DELETE | `/books/:bookId/cards/:cardId` | 单张设定卡详情、编辑 / 置顶切换、删除 |
+| GET/PUT | `/chapters/:chapterId/summary` | 读取 / 手工保存本章细纲、剧情摘要、关键事件与出场人物 |
+| POST | `/chapters/:chapterId/summary/extract` | 调用 `lorekeeper` 角色从正文提炼结构化摘要并落盘 `llm_usage_logs`（保留原有细纲） |
+| POST | `/chapters/:chapterId/ai/context-preview` | 预览上下文组装结果（设定卡召回来源、前情摘要、Token 预算与裁剪状态、Prompt 预览） |
+| POST | `/chapters/:chapterId/ai/stream` | 章内流式 AI 写作（`continue` / `expand` / `rewrite` / `polish`，POST+SSE 推送 `start`/`delta`/`done`/`error`，支持中止与用量审计） |
+| POST | `/chapters/:chapterId/ai/apply` | 原子应用 AI 正文（单事务校验 `expectedVersion` → 先留底 `source: 'ai'` 不可变快照 → 更新正文与版本 +1） |
 
 ---
 
