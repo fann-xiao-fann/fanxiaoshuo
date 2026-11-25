@@ -5,6 +5,7 @@ import { router } from './router';
 import { useThemeStore } from './stores/theme';
 import './styles/global.css';
 import './styles/books.css';
+import './styles/workflows.css';
 
 const app = createApp(App);
 const pinia = createPinia();

@@ -14,3 +14,9 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 /** SSE 事件流地址（辅助轮询兜底见 RuntimeView）。 */
 export const RUNTIME_EVENTS_URL = `${API_BASE_URL}/runtime/events`;
+
+/**
+ * 批量流水线 SSE 事件流地址（帧名 `ready` / `workflow-event` / `ping`）。
+ * 可用 `?runId=<uuid>` 只订阅单个批次；前端控制台默认订阅全量。
+ */
+export const WORKFLOW_EVENTS_URL = `${API_BASE_URL}/workflows/events`;

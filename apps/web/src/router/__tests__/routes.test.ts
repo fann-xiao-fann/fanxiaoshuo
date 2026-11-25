@@ -63,7 +63,7 @@ describe('工作台路由壳', () => {
     expect(router.currentRoute.value.name).toBe('book-workspace');
   });
 
-  it('后续阶段的两个占位页仍可访问', async () => {
+  it('批量流水线控制台已上线，创作工具盒仍为后续变更占位页', async () => {
     const router = createTestRouter();
 
     expect(router.resolve('/workflows').name).toBe('workflows');
@@ -72,13 +72,26 @@ describe('工作台路由壳', () => {
     await router.push('/workflows');
     expect(router.currentRoute.value.name).toBe('workflows');
     expect(router.currentRoute.value.meta.navKey).toBe('/workflows');
+    expect(router.currentRoute.value.meta.title).toBe('批量流水线');
+    expect(String(router.currentRoute.value.meta.description)).toContain('实时进度');
 
     await router.push('/toolbox');
     expect(router.currentRoute.value.name).toBe('toolbox');
     expect(router.currentRoute.value.meta.navKey).toBe('/toolbox');
+    expect(String(router.currentRoute.value.meta.description)).toContain('Change 5');
   });
 
-  it('四项完整能力页面已注册（books / models / runtime / 占位）', () => {
+  it('侧边导航描述去掉 Change 4 规划占位字样，保留 Change 5 占位', () => {
+    const workflows = NAV_ITEMS.find((item) => item.key === '/workflows');
+    const toolbox = NAV_ITEMS.find((item) => item.key === '/toolbox');
+
+    expect(workflows?.description).not.toContain('Change 4');
+    expect(workflows?.description).not.toContain('规划');
+    expect(workflows?.description).toContain('实时进度');
+    expect(toolbox?.description).toContain('Change 5');
+  });
+
+  it('四条完整能力页面与一个占位页已注册', () => {
     const router = createTestRouter();
     expect(router.resolve('/books').name).toBe('books');
     expect(router.resolve('/models').name).toBe('models');

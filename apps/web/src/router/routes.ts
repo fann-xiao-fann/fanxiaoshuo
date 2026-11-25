@@ -12,7 +12,7 @@ export const NAV_ITEMS = [
     key: '/workflows',
     label: '批量流水线',
     caption: 'Workflows',
-    description: '多 Agent 批量成文与审稿闭环（Change 4 规划）',
+    description: '多 Agent 批量成文、审稿返工与实时进度控制台',
   },
   {
     key: '/toolbox',
@@ -84,7 +84,7 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/WorkflowsView.vue'),
         meta: {
           title: '批量流水线',
-          description: '多 Agent 批量成文编排与审稿闭环（Change 4）',
+          description: '多 Agent 批量成文、审稿返工闭环与实时进度控制台',
           eyebrow: '运行期',
           navKey: '/workflows',
         } satisfies PageMeta,
