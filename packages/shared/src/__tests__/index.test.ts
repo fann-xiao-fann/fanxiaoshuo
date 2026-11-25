@@ -114,6 +114,27 @@ import {
   workflowStepStageSchema,
   workflowStepStatusSchema,
 } from '../index.js';
+import {
+  TOOLBOX_CATEGORIES,
+  TOOLBOX_CATEGORY_LABELS,
+  TOOLBOX_OUTLINE_FIELDS,
+  TOOLBOX_RUN_STATUSES,
+  TOOLBOX_TOOL_DEFINITIONS,
+  TOOLBOX_TOOL_IDS,
+  USAGE_SCENE_LABELS,
+  applyToolboxCardRequestSchema,
+  applyToolboxOutlineRequestSchema,
+  getToolboxToolDefinition,
+  runToolboxRequestSchema,
+  toolboxOutputSchema,
+  toolboxRunDetailSchema,
+  toolboxRunListQuerySchema,
+  toolboxRunListResponseSchema,
+  toolboxRunSummarySchema,
+  toolboxToolDefinitionSchema,
+  toolboxToolsResponseSchema,
+  validateToolboxInputs,
+} from '../index.js';
 
 describe('barrel 导出（前后端 / Worker 统一入口）', () => {
   it('导出全部契约常量与 schema', () => {
@@ -298,5 +319,37 @@ describe('Change 4 批量流水线契约 barrel 导出', () => {
     expect(workflowRunListResponseSchema).toBeDefined();
     expect(workflowJobPayloadSchema).toBeDefined();
     expect(workflowEventSchema).toBeDefined();
+  });
+});
+
+describe('Change 5 创作工具盒契约 barrel 导出', () => {
+  it('导出创作工具盒领域枚举与中文展示名', () => {
+    expect(TOOLBOX_CATEGORIES).toHaveLength(3);
+    expect(TOOLBOX_TOOL_IDS).toHaveLength(6);
+    expect(TOOLBOX_RUN_STATUSES).toEqual(['completed', 'failed']);
+    expect(TOOLBOX_OUTLINE_FIELDS).toHaveLength(4);
+    expect(TOOLBOX_CATEGORY_LABELS.planning).toBe('立项策划');
+    expect(TOOLBOX_TOOL_DEFINITIONS).toHaveLength(6);
+  });
+
+  it('导出全部创作工具盒 Zod Schema 与查询函数', () => {
+    expect(toolboxToolDefinitionSchema).toBeDefined();
+    expect(toolboxToolsResponseSchema).toBeDefined();
+    expect(toolboxOutputSchema).toBeDefined();
+    expect(runToolboxRequestSchema).toBeDefined();
+    expect(toolboxRunSummarySchema).toBeDefined();
+    expect(toolboxRunDetailSchema).toBeDefined();
+    expect(toolboxRunListQuerySchema).toBeDefined();
+    expect(toolboxRunListResponseSchema).toBeDefined();
+    expect(applyToolboxCardRequestSchema).toBeDefined();
+    expect(applyToolboxOutlineRequestSchema).toBeDefined();
+    expect(getToolboxToolDefinition('book-pitch')?.id).toBe('book-pitch');
+    expect(validateToolboxInputs('book-pitch', {}).ok).toBe(false);
+  });
+
+  it('全量 7 个用量场景标签可从 barrel 直接复用', () => {
+    expect(Object.keys(USAGE_SCENE_LABELS)).toHaveLength(7);
+    expect(USAGE_SCENES.toolboxRun).toBe('toolbox-run');
+    expect(USAGE_SCENE_LABELS['toolbox-run']).toBe('创作工具盒');
   });
 });

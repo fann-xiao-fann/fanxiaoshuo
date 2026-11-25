@@ -55,14 +55,36 @@ export const USAGE_SCENES = {
   connectivityTest: 'connectivity-test',
   /** 队列冒烟任务 */
   smokeJob: 'smoke-job',
-  /** Change 3 预留：章节成文 */
+  /** Change 3：章节成文 */
   chapterWrite: 'chapter-write',
-  /** Change 3 预留：设定抽取 */
+  /** Change 3：设定抽取 */
   loreExtract: 'lore-extract',
-  /** Change 4 预留：审稿质检 */
+  /** Change 4：审稿质检 */
   chapterReview: 'chapter-review',
   /** Change 4：批量流水线细纲规划 */
   outlinePlan: 'outline-plan',
+  /** Change 5：创作工具盒（单点结构化提效工具） */
+  toolboxRun: 'toolbox-run',
 } as const;
 
 export type UsageScene = (typeof USAGE_SCENES)[keyof typeof USAGE_SCENES];
+
+/**
+ * 用量场景中文展示名（运行期观测台用量账本、工具盒与日志导出共用）。
+ * 键为场景字面量本身（与 `USAGE_SCENES` 的值 100% 对齐），新增场景必须同步补齐，
+ * 否则 `Record<UsageScene, string>` 会在编译期直接报错，避免前端出现裸英文标识。
+ */
+export const USAGE_SCENE_LABELS = {
+  'connectivity-test': '一键测通',
+  'smoke-job': '冒烟任务',
+  'chapter-write': '章节成文',
+  'lore-extract': '设定抽取',
+  'chapter-review': '审稿质检',
+  'outline-plan': '细纲规划',
+  'toolbox-run': '创作工具盒',
+} as const satisfies Record<UsageScene, string>;
+
+/** 场景展示名兜底：未知场景原样返回，避免前端渲染崩溃。 */
+export function resolveUsageSceneLabel(scene: string): string {
+  return (USAGE_SCENE_LABELS as Record<string, string | undefined>)[scene] ?? scene;
+}
