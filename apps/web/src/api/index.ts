@@ -8,3 +8,5 @@ export * from './health';
 export * from './usage-logs';
 export * from './runtime';
 export * from './books';
+export * from './book-bible';
+export * from './sse-client';
