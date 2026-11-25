@@ -4,8 +4,10 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { ApiError, isForeignKeyViolation, isUniqueViolation, toApiError, validationErrorFromZod } from './errors.js';
 import { registerAgentRoleRoutes } from './routes/agent-roles.js';
+import { registerBookBibleRoutes } from './routes/book-bible.js';
 import { registerBookTreeRoutes } from './routes/book-tree.js';
 import { registerBookRoutes } from './routes/books.js';
+import { registerChapterAiRoutes } from './routes/chapter-ai.js';
 import { registerChapterRevisionRoutes } from './routes/chapter-revisions.js';
 import { registerChapterRoutes } from './routes/chapters.js';
 import { registerHealthRoutes } from './routes/health.js';
@@ -95,6 +97,10 @@ export async function buildServer(deps: ServerDependencies): Promise<FastifyInst
   registerVolumeRoutes(app, deps);
   registerChapterRoutes(app, deps);
   registerChapterRevisionRoutes(app, deps);
+
+  // Change 3：Book Bible（总大纲 / 设定卡 / 章节摘要）与章内 AI 写作
+  registerBookBibleRoutes(app, deps);
+  registerChapterAiRoutes(app, deps);
 
   return app;
 }

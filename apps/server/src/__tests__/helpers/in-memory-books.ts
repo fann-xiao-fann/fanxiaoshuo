@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { countNovelWords } from '@fanxiaoshuo/shared';
 import { FORCE_OVERWRITE_BACKUP_NOTE } from '../../domain/books.js';
 import type {
+  ApplyAiChapterContentOutcome,
+  ApplyAiChapterContentRecordInput,
   BookAggregateRecord,
   BookListFilter,
   BookRecord,
@@ -505,6 +507,41 @@ export function createInMemoryBookRepositories(options: {
           updatedAt: now(),
         });
       }
+    },
+
+    async applyAiContent(
+      input: ApplyAiChapterContentRecordInput,
+    ): Promise<ApplyAiChapterContentOutcome> {
+      const current = chapterMap.get(input.chapterId);
+      if (!current || current.deletedAt !== null) {
+        return { status: 'not_found' };
+      }
+      // 乐观锁不匹配：直接返回 conflict，不产生任何快照（模拟事务回滚）。
+      if (current.version !== input.expectedVersion) {
+        return { status: 'conflict', chapter: current };
+      }
+
+      const backupRevision = insertRevision({
+        chapterId: current.id,
+        version: current.version,
+        source: 'ai',
+        note: input.note,
+        titleSnapshot: current.title,
+        contentText: current.contentText,
+        contentJson: current.contentJson,
+        wordCount: current.wordCount,
+      });
+
+      const next: ChapterRecord = {
+        ...current,
+        contentText: input.contentText,
+        contentJson: input.contentJson === undefined ? current.contentJson : input.contentJson,
+        wordCount: input.wordCount,
+        version: current.version + 1,
+        updatedAt: now(),
+      };
+      chapterMap.set(current.id, next);
+      return { status: 'applied', chapter: next, backupRevision };
     },
   };
 

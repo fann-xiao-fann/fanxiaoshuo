@@ -3,6 +3,8 @@ import type {
   ApiErrorCode,
   BookStatus,
   ChapterStatus,
+  ChapterSummarySource,
+  KnowledgeCardCategory,
   ProviderProtocol,
   RevisionSource,
   UsageLogStatus,
@@ -366,6 +368,11 @@ export interface ChapterRepository {
   purge(id: string): Promise<boolean>;
   /** 乐观锁保存正文；`forceOverwrite` 时先落 `restore` 备份快照再写入。 */
   saveContent(input: SaveChapterContentRecordInput): Promise<ChapterSaveOutcome>;
+  /**
+   * 单事务原子应用 AI 正文：乐观锁校验 → `source: 'ai'` 不可变快照留底 → 更新正文与版本号。
+   * 冲突时绝不写入脏快照。
+   */
+  applyAiContent(input: ApplyAiChapterContentRecordInput): Promise<ApplyAiChapterContentOutcome>;
   /** 单事务批量重写 `volumeId` 与 `sortOrder`（同卷排序 + 跨卷移动）。 */
   reorder(bookId: string, items: readonly ChapterReorderCommand[]): Promise<void>;
 }
@@ -430,3 +437,154 @@ export interface ChapterRevisionRepository {
    */
   restore(input: RestoreChapterRevisionRecordInput): Promise<RestoreChapterRevisionResult | null>;
 }
+
+/* -------------------------------------------------------------------------- */
+/*                    Change 3：Book Bible 仓储（总大纲 / 设定卡 / 章节记忆）                    */
+/* -------------------------------------------------------------------------- */
+
+/** 全书总大纲记录（1:1 绑定书籍，`updatedAt` 为最近保存时间）。 */
+export interface BookOutlineRecord {
+  readonly bookId: string;
+  readonly mainPlot: string;
+  readonly worldSetting: string;
+  readonly styleGuide: string;
+  readonly endingPlan: string;
+  readonly updatedAt: Date;
+}
+
+export interface UpsertBookOutlineRecordInput {
+  readonly bookId: string;
+  readonly mainPlot: string;
+  readonly worldSetting: string;
+  readonly styleGuide: string;
+  readonly endingPlan: string;
+}
+
+export interface BookOutlineRepository {
+  /** 读取本书总大纲；尚未填写返回 null（路由返回空默认结构，不返回 404）。 */
+  findByBookId(bookId: string): Promise<BookOutlineRecord | null>;
+  /** 整段覆盖写入（不存在则插入），返回落盘后的记录。 */
+  upsert(input: UpsertBookOutlineRecordInput): Promise<BookOutlineRecord>;
+}
+
+/** 结构化设定卡记录（`embedding` 仅服务端内部使用，DTO 不下发原始向量）。 */
+export interface KnowledgeCardRecord {
+  readonly id: string;
+  readonly bookId: string;
+  readonly category: KnowledgeCardCategory;
+  readonly title: string;
+  readonly summary: string;
+  readonly content: string;
+  readonly aliases: string[];
+  readonly tags: string[];
+  readonly pinned: boolean;
+  readonly sortOrder: number;
+  readonly embedding: number[] | null;
+  readonly embeddingModelRef: string | null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+/** 设定卡列表筛选（`q` 在标题 / 别名 / 摘要 / 正文上做大小写不敏感模糊匹配）。 */
+export interface KnowledgeCardListFilter {
+  readonly category?: KnowledgeCardCategory | undefined;
+  readonly q?: string | undefined;
+  readonly pinned?: boolean | undefined;
+}
+
+export interface CreateKnowledgeCardRecordInput {
+  readonly bookId: string;
+  readonly category: KnowledgeCardCategory;
+  readonly title: string;
+  readonly summary: string;
+  readonly content: string;
+  readonly aliases: string[];
+  readonly tags: string[];
+  readonly pinned: boolean;
+  /** 省略时由仓储取该书 `max(sort_order) + 1` 追加到末尾 */
+  readonly sortOrder?: number | undefined;
+  readonly embedding?: number[] | null | undefined;
+  readonly embeddingModelRef?: string | null | undefined;
+}
+
+export type UpdateKnowledgeCardRecordPatch = Partial<
+  Pick<
+    KnowledgeCardRecord,
+    | 'category'
+    | 'title'
+    | 'summary'
+    | 'content'
+    | 'aliases'
+    | 'tags'
+    | 'pinned'
+    | 'sortOrder'
+    | 'embedding'
+    | 'embeddingModelRef'
+  >
+>;
+
+export interface KnowledgeCardRepository {
+  /** 本书设定卡列表（`pinned` 优先，其次 `sortOrder` 升序）。 */
+  listByBook(bookId: string, filter?: KnowledgeCardListFilter): Promise<KnowledgeCardRecord[]>;
+  findById(id: string): Promise<KnowledgeCardRecord | null>;
+  create(input: CreateKnowledgeCardRecordInput): Promise<KnowledgeCardRecord>;
+  update(id: string, patch: UpdateKnowledgeCardRecordPatch): Promise<KnowledgeCardRecord | null>;
+  /** 删除成功返回 true，记录不存在返回 false。 */
+  delete(id: string): Promise<boolean>;
+}
+
+/** 章节细纲与剧情摘要记录（`updatedAt` 为最近保存时间）。 */
+export interface ChapterSummaryRecord {
+  readonly chapterId: string;
+  readonly bookId: string;
+  readonly outline: string;
+  readonly summary: string;
+  readonly keyEvents: string[];
+  readonly charactersPresent: string[];
+  readonly source: ChapterSummarySource;
+  readonly updatedAt: Date;
+}
+
+export interface UpsertChapterSummaryRecordInput {
+  readonly chapterId: string;
+  readonly bookId: string;
+  readonly outline: string;
+  readonly summary: string;
+  readonly keyEvents: string[];
+  readonly charactersPresent: string[];
+  readonly source: ChapterSummarySource;
+}
+
+export interface ChapterSummaryRepository {
+  findByChapterId(chapterId: string): Promise<ChapterSummaryRecord | null>;
+  /** 本书全部章节记忆（按 `updatedAt` 升序），供上下文组装按阅读顺序筛选。 */
+  listByBook(bookId: string): Promise<ChapterSummaryRecord[]>;
+  /** 整条覆盖写入（不存在则插入），返回落盘后的记录。 */
+  upsert(input: UpsertChapterSummaryRecordInput): Promise<ChapterSummaryRecord>;
+}
+
+/** 原子应用 AI 正文入参（字数已由服务端重算，`note` 用于快照备注）。 */
+export interface ApplyAiChapterContentRecordInput {
+  readonly chapterId: string;
+  readonly expectedVersion: number;
+  readonly contentText: string;
+  /** 省略表示保留原 JSON */
+  readonly contentJson?: unknown | undefined;
+  readonly wordCount: number;
+  readonly note: string;
+}
+
+/**
+ * 原子应用 AI 正文结果：
+ * - `applied`：写入成功，`backupRevision` 为应用前原稿的 `source: 'ai'` 快照
+ * - `conflict`：乐观锁版本已过期（`chapter` 为服务端最新记录，未写入任何快照）
+ * - `not_found`：章节不存在或已软删
+ */
+export type ApplyAiChapterContentOutcome =
+  | {
+      readonly status: 'applied';
+      readonly chapter: ChapterRecord;
+      readonly backupRevision: ChapterRevisionRecord;
+    }
+  | { readonly status: 'conflict'; readonly chapter: ChapterRecord }
+  | { readonly status: 'not_found' };

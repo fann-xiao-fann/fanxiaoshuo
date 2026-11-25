@@ -4,10 +4,13 @@ import {
   agentRoleSchema,
   apiErrorCodeSchema,
   bookDtoSchema,
+  bookOutlineDtoSchema,
   chapterDetailDtoSchema,
   chapterRevisionDetailSchema,
   chapterRevisionSummarySchema,
+  chapterSummaryDtoSchema,
   chapterTreeItemSchema,
+  knowledgeCardDtoSchema,
   modelDtoSchema,
   modelSummarySchema,
   providerDtoSchema,
@@ -18,10 +21,13 @@ import {
   type AgentRoleRouteDto,
   type ApiErrorCode,
   type BookDto,
+  type BookOutlineDto,
   type ChapterDetailDto,
   type ChapterRevisionDetail,
   type ChapterRevisionSummary,
+  type ChapterSummaryDto,
   type ChapterTreeItem,
+  type KnowledgeCardDto,
   type ModelDto,
   type ModelSummary,
   type ProviderDto,
@@ -33,9 +39,12 @@ import {
 import type {
   AgentRoleBindingRecord,
   BookAggregateRecord,
+  BookOutlineRecord,
   ChapterMetaRecord,
   ChapterRecord,
   ChapterRevisionRecord,
+  ChapterSummaryRecord,
+  KnowledgeCardRecord,
   ModelRecord,
   ProviderRecord,
   UsageLogRecord,
@@ -260,5 +269,58 @@ export function toRevisionDetail(record: ChapterRevisionRecord): ChapterRevision
     ...toRevisionSummary(record),
     contentText: record.contentText,
     contentJson: record.contentJson,
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*                  Change 3：Book Bible DTO 映射（不下发原始向量）                  */
+/* -------------------------------------------------------------------------- */
+
+/** 总大纲记录 → 对外 DTO。 */
+export function toBookOutlineDto(record: BookOutlineRecord): BookOutlineDto {
+  return bookOutlineDtoSchema.parse({
+    bookId: record.bookId,
+    mainPlot: record.mainPlot,
+    worldSetting: record.worldSetting,
+    styleGuide: record.styleGuide,
+    endingPlan: record.endingPlan,
+    updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
+/**
+ * 设定卡记录 → 对外 DTO。
+ * 仅暴露 `hasEmbedding` 与 `embeddingModelRef`，绝不输出原始浮点向量数组。
+ */
+export function toKnowledgeCardDto(record: KnowledgeCardRecord): KnowledgeCardDto {
+  return knowledgeCardDtoSchema.parse({
+    id: record.id,
+    bookId: record.bookId,
+    category: record.category,
+    title: record.title,
+    summary: record.summary,
+    content: record.content,
+    aliases: record.aliases,
+    tags: record.tags,
+    pinned: record.pinned,
+    sortOrder: record.sortOrder,
+    hasEmbedding: Boolean(record.embedding?.length),
+    embeddingModelRef: record.embeddingModelRef,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  });
+}
+
+/** 章节细纲与剧情摘要记录 → 对外 DTO。 */
+export function toChapterSummaryDto(record: ChapterSummaryRecord): ChapterSummaryDto {
+  return chapterSummaryDtoSchema.parse({
+    chapterId: record.chapterId,
+    bookId: record.bookId,
+    outline: record.outline,
+    summary: record.summary,
+    keyEvents: record.keyEvents,
+    charactersPresent: record.charactersPresent,
+    source: record.source,
+    updatedAt: record.updatedAt.toISOString(),
   });
 }

@@ -4,6 +4,8 @@ import { chapterRevisions, chapters } from '../../db/schema.js';
 import { FORCE_OVERWRITE_BACKUP_NOTE } from '../../domain/books.js';
 import { mapChapterMetaRow, mapChapterRow, mapRevisionRow } from '../../mapping/rows.js';
 import type {
+  ApplyAiChapterContentOutcome,
+  ApplyAiChapterContentRecordInput,
   ChapterMetaRecord,
   ChapterRepository,
   ChapterRevisionRecord,
@@ -209,6 +211,84 @@ export function createDrizzleChapterRepository(db: Database): ChapterRepository 
           return { status: 'saved', chapter: mapChapterRow(row), backupRevision };
         }
 
+        const [latest] = await tx
+          .select()
+          .from(chapters)
+          .where(and(eq(chapters.id, input.chapterId), isNull(chapters.deletedAt)))
+          .limit(1);
+        return latest
+          ? { status: 'conflict', chapter: mapChapterRow(latest) }
+          : { status: 'not_found' };
+      });
+    },
+
+    async applyAiContent(
+      input: ApplyAiChapterContentRecordInput,
+    ): Promise<ApplyAiChapterContentOutcome> {
+      return db.transaction(async (tx) => {
+        // 1. 读取活跃章节（已软删视为不存在）。
+        const [current] = await tx
+          .select()
+          .from(chapters)
+          .where(and(eq(chapters.id, input.chapterId), isNull(chapters.deletedAt)))
+          .limit(1);
+
+        if (!current) {
+          return { status: 'not_found' };
+        }
+
+        // 2. 乐观锁前置校验：版本不匹配时直接返回，绝不写入脏快照。
+        if (current.version !== input.expectedVersion) {
+          return { status: 'conflict', chapter: mapChapterRow(current) };
+        }
+
+        // 3. 先为应用前的原稿留底（`source: 'ai'`，不可变快照）。
+        const [revision] = await tx
+          .insert(chapterRevisions)
+          .values({
+            chapterId: current.id,
+            version: current.version,
+            source: 'ai',
+            note: input.note,
+            titleSnapshot: current.title,
+            contentText: current.contentText,
+            contentJson: current.contentJson,
+            wordCount: current.wordCount,
+          })
+          .returning();
+
+        if (!revision) {
+          throw new Error('AI 正文应用失败：写入留底快照未返回记录。');
+        }
+
+        // 4. 条件更新（带乐观锁）；并发被抢时返回 0 行。
+        const [row] = await tx
+          .update(chapters)
+          .set({
+            contentText: input.contentText,
+            ...(input.contentJson === undefined ? {} : { contentJson: input.contentJson }),
+            wordCount: input.wordCount,
+            version: sql`${chapters.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(chapters.id, input.chapterId),
+              isNull(chapters.deletedAt),
+              eq(chapters.version, input.expectedVersion),
+            ),
+          )
+          .returning();
+
+        if (row) {
+          return {
+            status: 'applied',
+            chapter: mapChapterRow(row),
+            backupRevision: mapRevisionRow(revision),
+          };
+        }
+
+        // 并发抢占：事务回滚会抹除上方的快照写入。
         const [latest] = await tx
           .select()
           .from(chapters)

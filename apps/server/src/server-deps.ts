@@ -3,9 +3,12 @@ import type { HealthProbes } from './health/probes.js';
 import type { JobEventBus, SmokeQueue } from './queue/types.js';
 import type {
   AgentRoleRepository,
+  BookOutlineRepository,
   BookRepository,
   ChapterRepository,
   ChapterRevisionRepository,
+  ChapterSummaryRepository,
+  KnowledgeCardRepository,
   ModelRepository,
   ProviderRepository,
   UsageLogRepository,
@@ -46,6 +49,12 @@ export interface ServerDependencies {
   readonly chapters: ChapterRepository;
   /** 章节历史快照仓储（手动 / 自动节流 / 安全回滚） */
   readonly chapterRevisions: ChapterRevisionRepository;
+  /** 全书总大纲仓储（1:1 绑定书籍，无记录返回 null） */
+  readonly bookOutlines: BookOutlineRepository;
+  /** 结构化设定卡仓储（6 类分类、筛选、常驻置顶与向量列） */
+  readonly knowledgeCards: KnowledgeCardRepository;
+  /** 章节细纲 / 剧情摘要仓储（手工维护与 lorekeeper AI 提炼共用） */
+  readonly chapterSummaries: ChapterSummaryRepository;
   /**
    * 自动快照节流间隔（毫秒）。默认 `AUTO_REVISION_INTERVAL_MS`（5 分钟），
    * 测试可注入极小值以覆盖「节流触发 / 节流跳过」两条分支。
