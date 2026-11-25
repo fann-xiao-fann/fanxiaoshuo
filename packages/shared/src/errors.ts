@@ -59,6 +59,14 @@ export const API_ERROR_CODES = {
   KNOWLEDGE_CARD_NOT_FOUND: 'KNOWLEDGE_CARD_NOT_FOUND',
   /** AI 写作 / 摘要提炼缺少可用上下文（无选区且无正文，或正文为空） */
   AI_EMPTY_CONTEXT: 'AI_EMPTY_CONTEXT',
+  /** 批量流水线批次不存在 */
+  WORKFLOW_RUN_NOT_FOUND: 'WORKFLOW_RUN_NOT_FOUND',
+  /** 批量流水线步骤不存在 */
+  WORKFLOW_STEP_NOT_FOUND: 'WORKFLOW_STEP_NOT_FOUND',
+  /** 批次仍处于活跃态（排队 / 运行 / 暂停），禁止删除或重复启动 */
+  WORKFLOW_RUN_ACTIVE: 'WORKFLOW_RUN_ACTIVE',
+  /** 批次当前状态不允许该操作（如对终态批次续跑） */
+  WORKFLOW_INVALID_STATE: 'WORKFLOW_INVALID_STATE',
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERROR_CODES;
@@ -100,6 +108,10 @@ export const API_ERROR_HTTP_STATUS: Record<ApiErrorCode, number> = {
   REVISION_NOT_FOUND: 404,
   KNOWLEDGE_CARD_NOT_FOUND: 404,
   AI_EMPTY_CONTEXT: 400,
+  WORKFLOW_RUN_NOT_FOUND: 404,
+  WORKFLOW_STEP_NOT_FOUND: 404,
+  WORKFLOW_RUN_ACTIVE: 409,
+  WORKFLOW_INVALID_STATE: 409,
 };
 
 /** 字段级校验问题（由 ZodError.issues 投影而来，路径用 `.` 连接）。 */

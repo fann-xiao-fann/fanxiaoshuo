@@ -116,3 +116,41 @@ describe('Change 3 设定集 / AI 写作专用错误码', () => {
     expect(apiErrorStatus('KNOWLEDGE_CARD_NOT_FOUND')).toBeLessThan(500);
   });
 });
+
+describe('Change 4 批量流水线专用错误码', () => {
+  it('新增错误码字面量与值一致', () => {
+    expect(API_ERROR_CODES.WORKFLOW_RUN_NOT_FOUND).toBe('WORKFLOW_RUN_NOT_FOUND');
+    expect(API_ERROR_CODES.WORKFLOW_STEP_NOT_FOUND).toBe('WORKFLOW_STEP_NOT_FOUND');
+    expect(API_ERROR_CODES.WORKFLOW_RUN_ACTIVE).toBe('WORKFLOW_RUN_ACTIVE');
+    expect(API_ERROR_CODES.WORKFLOW_INVALID_STATE).toBe('WORKFLOW_INVALID_STATE');
+  });
+
+  it('新增错误码 HTTP 状态映射符合契约（404 / 409）', () => {
+    expect(API_ERROR_HTTP_STATUS.WORKFLOW_RUN_NOT_FOUND).toBe(404);
+    expect(API_ERROR_HTTP_STATUS.WORKFLOW_STEP_NOT_FOUND).toBe(404);
+    expect(API_ERROR_HTTP_STATUS.WORKFLOW_RUN_ACTIVE).toBe(409);
+    expect(API_ERROR_HTTP_STATUS.WORKFLOW_INVALID_STATE).toBe(409);
+
+    expect(apiErrorStatus('WORKFLOW_RUN_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('WORKFLOW_STEP_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('WORKFLOW_RUN_ACTIVE')).toBe(409);
+    expect(apiErrorStatus('WORKFLOW_INVALID_STATE')).toBe(409);
+  });
+
+  it('新增错误码可被统一 ApiError 响应体使用', () => {
+    for (const code of [
+      'WORKFLOW_RUN_NOT_FOUND',
+      'WORKFLOW_STEP_NOT_FOUND',
+      'WORKFLOW_RUN_ACTIVE',
+      'WORKFLOW_INVALID_STATE',
+    ] as const) {
+      expect(apiErrorCodeSchema.safeParse(code).success).toBe(true);
+      expect(apiErrorSchema.safeParse({ code, message: '错误说明' }).success).toBe(true);
+    }
+  });
+
+  it('删除活跃批次 / 非法状态流转均为 409（前端据此收敛按钮态）', () => {
+    expect(apiErrorStatus('WORKFLOW_RUN_ACTIVE')).toBe(409);
+    expect(apiErrorStatus('WORKFLOW_INVALID_STATE')).toBe(409);
+  });
+});

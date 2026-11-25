@@ -73,6 +73,47 @@ import {
   upsertBookOutlineSchema,
   upsertChapterSummarySchema,
 } from '../index.js';
+import {
+  DEFAULT_WORKFLOW_MAX_COST_USD,
+  DEFAULT_WORKFLOW_MAX_REWORK_ROUNDS,
+  DEFAULT_WORKFLOW_MIN_PASS_SCORE,
+  MAX_WORKFLOW_CHAPTERS_PER_RUN,
+  MAX_WORKFLOW_MAX_COST_USD,
+  MAX_WORKFLOW_REWORK_ROUNDS,
+  MIN_WORKFLOW_MAX_COST_USD,
+  WORKFLOW_EVENT_TYPES,
+  WORKFLOW_MODES,
+  WORKFLOW_MODE_LABELS,
+  WORKFLOW_PAUSE_REASONS,
+  WORKFLOW_PAUSE_REASON_LABELS,
+  WORKFLOW_RUN_STATUSES,
+  WORKFLOW_RUN_STATUS_LABELS,
+  WORKFLOW_SSE_EVENT_NAMES,
+  WORKFLOW_STATUS_TO_EVENT_TYPE,
+  WORKFLOW_STEP_STAGES,
+  WORKFLOW_STEP_STATUSES,
+  WORKFLOW_STEP_STATUS_LABELS,
+  WORKFLOW_STEP_STAGE_LABELS,
+  WORKFLOW_TERMINAL_STATUSES,
+  autoCreateChaptersConfigSchema,
+  createWorkflowRunSchema,
+  isWorkflowTerminalStatus,
+  resumeWorkflowRunSchema,
+  workflowEventSchema,
+  workflowEventTypeSchema,
+  workflowJobPayloadSchema,
+  workflowModeSchema,
+  workflowPauseReasonSchema,
+  workflowRunConfigSchema,
+  workflowRunDetailDtoSchema,
+  workflowRunListQuerySchema,
+  workflowRunListResponseSchema,
+  workflowRunStatusSchema,
+  workflowRunSummaryDtoSchema,
+  workflowStepDtoSchema,
+  workflowStepStageSchema,
+  workflowStepStatusSchema,
+} from '../index.js';
 
 describe('barrel 导出（前后端 / Worker 统一入口）', () => {
   it('导出全部契约常量与 schema', () => {
@@ -141,6 +182,7 @@ describe('运行期常量契约', () => {
   it('Redis 心跳键 / 事件频道与设计文档一致', () => {
     expect(REDIS_KEYS.workerHeartbeat).toBe('fanxiaoshuo:worker:heartbeat');
     expect(REDIS_CHANNELS.jobEvents).toBe('fanxiaoshuo:events:jobs');
+    expect(REDIS_CHANNELS.workflowEvents).toBe('fanxiaoshuo:events:workflows');
   });
 
   it('Worker 心跳 TTL 必须大于上报间隔（避免误判离线）', () => {
@@ -162,6 +204,10 @@ describe('运行期常量契约', () => {
   it('用量场景覆盖测通与冒烟任务', () => {
     expect(USAGE_SCENES.connectivityTest).toBe('connectivity-test');
     expect(USAGE_SCENES.smokeJob).toBe('smoke-job');
+    expect(USAGE_SCENES.outlinePlan).toBe('outline-plan');
+    expect(USAGE_SCENES.chapterWrite).toBe('chapter-write');
+    expect(USAGE_SCENES.chapterReview).toBe('chapter-review');
+    expect(USAGE_SCENES.loreExtract).toBe('lore-extract');
   });
 
   it('SSE 帧名可供前端 EventSource 复用', () => {
@@ -200,5 +246,57 @@ describe('Change 3 设定集 / AI 写作契约 barrel 导出', () => {
     expect(aiStreamErrorEventSchema).toBeDefined();
     expect(applyAiChapterContentSchema).toBeDefined();
     expect(applyAiChapterContentResponseSchema).toBeDefined();
+  });
+});
+
+describe('Change 4 批量流水线契约 barrel 导出', () => {
+  it('导出批量流水线领域枚举与中文展示名', () => {
+    expect(WORKFLOW_MODES).toHaveLength(3);
+    expect(WORKFLOW_RUN_STATUSES).toHaveLength(6);
+    expect(WORKFLOW_TERMINAL_STATUSES).toHaveLength(3);
+    expect(WORKFLOW_STEP_STATUSES).toHaveLength(5);
+    expect(WORKFLOW_STEP_STAGES).toHaveLength(7);
+    expect(WORKFLOW_PAUSE_REASONS).toHaveLength(2);
+    expect(WORKFLOW_EVENT_TYPES).toHaveLength(7);
+
+    expect(WORKFLOW_MODE_LABELS.full_pipeline).toBe('全链路生产');
+    expect(WORKFLOW_RUN_STATUS_LABELS.paused).toBe('已暂停');
+    expect(WORKFLOW_STEP_STATUS_LABELS.skipped).toBe('已跳过');
+    expect(WORKFLOW_STEP_STAGE_LABELS.reworking).toBe('按意见返工');
+    expect(WORKFLOW_PAUSE_REASON_LABELS.BUDGET_EXCEEDED).toBe('触及预算上限');
+    expect(WORKFLOW_SSE_EVENT_NAMES.workflowEvent).toBe('workflow-event');
+    expect(WORKFLOW_STATUS_TO_EVENT_TYPE.paused).toBe('workflow.paused');
+    expect(isWorkflowTerminalStatus('cancelled')).toBe(true);
+    expect(isWorkflowTerminalStatus('running')).toBe(false);
+  });
+
+  it('导出预算与返工运行常量', () => {
+    expect(DEFAULT_WORKFLOW_MIN_PASS_SCORE).toBe(75);
+    expect(DEFAULT_WORKFLOW_MAX_REWORK_ROUNDS).toBe(1);
+    expect(MAX_WORKFLOW_REWORK_ROUNDS).toBe(3);
+    expect(DEFAULT_WORKFLOW_MAX_COST_USD).toBe(5);
+    expect(MIN_WORKFLOW_MAX_COST_USD).toBe(0.0001);
+    expect(MAX_WORKFLOW_MAX_COST_USD).toBe(500);
+    expect(MAX_WORKFLOW_CHAPTERS_PER_RUN).toBe(50);
+  });
+
+  it('导出批量流水线全部 Zod Schema', () => {
+    expect(workflowModeSchema).toBeDefined();
+    expect(workflowRunStatusSchema).toBeDefined();
+    expect(workflowStepStatusSchema).toBeDefined();
+    expect(workflowStepStageSchema).toBeDefined();
+    expect(workflowPauseReasonSchema).toBeDefined();
+    expect(workflowEventTypeSchema).toBeDefined();
+    expect(autoCreateChaptersConfigSchema).toBeDefined();
+    expect(workflowRunConfigSchema).toBeDefined();
+    expect(createWorkflowRunSchema).toBeDefined();
+    expect(resumeWorkflowRunSchema).toBeDefined();
+    expect(workflowStepDtoSchema).toBeDefined();
+    expect(workflowRunSummaryDtoSchema).toBeDefined();
+    expect(workflowRunDetailDtoSchema).toBeDefined();
+    expect(workflowRunListQuerySchema).toBeDefined();
+    expect(workflowRunListResponseSchema).toBeDefined();
+    expect(workflowJobPayloadSchema).toBeDefined();
+    expect(workflowEventSchema).toBeDefined();
   });
 });

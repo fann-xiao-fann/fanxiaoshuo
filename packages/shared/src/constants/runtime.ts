@@ -26,6 +26,8 @@ export const REDIS_KEYS = {
 export const REDIS_CHANNELS = {
   /** 队列任务状态流转事件（排队 / 运行 / 完成 / 失败） */
   jobEvents: 'fanxiaoshuo:events:jobs',
+  /** Change 4：批量流水线批次 / 步骤实时进度事件 */
+  workflowEvents: 'fanxiaoshuo:events:workflows',
 } as const;
 
 /** Worker 心跳参数（与健康检查的判定窗口保持一致）。 */
@@ -59,6 +61,8 @@ export const USAGE_SCENES = {
   loreExtract: 'lore-extract',
   /** Change 4 预留：审稿质检 */
   chapterReview: 'chapter-review',
+  /** Change 4：批量流水线细纲规划 */
+  outlinePlan: 'outline-plan',
 } as const;
 
 export type UsageScene = (typeof USAGE_SCENES)[keyof typeof USAGE_SCENES];
