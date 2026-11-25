@@ -256,6 +256,7 @@ describe('volumesApi / chaptersApi', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
+        // 真实服务端返回的是快照详情（含正文），用于前置校验契约一致。
         jsonResponse(
           {
             id: REVISION_ID,
@@ -265,6 +266,8 @@ describe('volumesApi / chaptersApi', () => {
             note: '留底',
             titleSnapshot: '第一章',
             wordCount: 2,
+            contentText: '第一章正文',
+            contentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
             createdAt: NOW,
           },
           201,
@@ -292,6 +295,8 @@ describe('volumesApi / chaptersApi', () => {
 
     const revision = await chaptersApi.createRevision(CHAPTER_ID, { note: '留底' });
     expect(revision.source).toBe('manual');
+    expect(revision.contentText).toBe('第一章正文');
+    expect(revision.contentJson).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
     expect(lastCall(fetchMock)[0]).toContain(`/chapters/${CHAPTER_ID}/revisions`);
 
     const restored = await chaptersApi.restoreRevision(CHAPTER_ID, REVISION_ID);

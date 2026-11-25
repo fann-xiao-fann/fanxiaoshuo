@@ -600,6 +600,8 @@ describe('useBookWorkspaceStore · 沉浸模式与快照', () => {
       note: '留底',
       titleSnapshot: '第一章 风起',
       wordCount: 5,
+      contentText: '第一章 风起 正文',
+      contentJson: { type: 'doc', content: [{ type: 'paragraph' }] },
       createdAt: NOW,
     });
     vi.mocked(chaptersApi.listRevisions).mockResolvedValue({

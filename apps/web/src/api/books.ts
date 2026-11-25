@@ -6,7 +6,6 @@ import {
   chapterDetailDtoSchema,
   chapterRevisionDetailSchema,
   chapterRevisionListResponseSchema,
-  chapterRevisionSummarySchema,
   chapterSaveResponseSchema,
   restoreChapterRevisionResponseSchema,
   type BookDto,
@@ -270,11 +269,19 @@ export const chaptersApi = {
     );
   },
 
+  /**
+   * 手动留底快照。
+   *
+   * 服务端 `POST /chapters/:chapterId/revisions` 返回的是**快照详情**
+   * （`chapterRevisionDetailSchema`，含 `contentText` / `contentJson`），
+   * 因此这里必须按详情契约解析，否则多余字段会触发 `INVALID_RESPONSE`。
+   * `ChapterRevisionDetail` 是 `ChapterRevisionSummary` 的超集，调用方完全兼容。
+   */
   createRevision(
     chapterId: string,
     payload: CreateChapterRevisionInputPayload = {},
-  ): Promise<ChapterRevisionSummary> {
-    return apiRequest(`${chapterPath(chapterId)}/revisions`, chapterRevisionSummarySchema, {
+  ): Promise<ChapterRevisionDetail> {
+    return apiRequest(`${chapterPath(chapterId)}/revisions`, chapterRevisionDetailSchema, {
       method: 'POST',
       body: payload,
     });

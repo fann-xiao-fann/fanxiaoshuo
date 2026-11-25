@@ -2,7 +2,7 @@
 
 面向内部批量网文创作的 **AI 工作台**：用一组分工明确的写书 Agent 串起「立项起盘 → 设定集维护 → 拆细纲 → 逐章成文 → 审稿返工 → 校审导出」流水线，并提供模型配置、Token/费用计量与基础设施健康诊断。
 
-> 本仓库为 **pnpm + TypeScript（strict）Monorepo**，当前已完成 Change 1（工作区骨架 / 契约 / 模型配置中心 / 运行期底座 / 工作台外壳）。
+> 本仓库为 **pnpm + TypeScript（strict）Monorepo**。当前已完成 **Change 1**（工作区骨架 / 契约 / 模型配置中心 / 运行期底座 / 工作台外壳）与 **Change 2**（书架书库、卷章目录树、TipTap 长文编辑器、历史快照与安全回滚、整本导出 TXT/MD）。
 
 ---
 
@@ -12,7 +12,7 @@
 |---|---|
 | Monorepo | pnpm workspaces + TypeScript strict（Node.js >= 22，Windows 优先兼容） |
 | 共享契约 | `packages/shared`：Zod Schema / DTO / SSE 事件 / 领域枚举 / 统一错误码（唯一真相来源） |
-| 前端 | Vue 3 + Vite + Pinia + Vue Router + Naive UI（明暗双主题，TipTap 后续接入） |
+| 前端 | Vue 3 + Vite + Pinia + Vue Router + Naive UI（明暗双主题 + TipTap 长文编辑器） |
 | 后端 API | Fastify + Drizzle ORM + PostgreSQL（`pgvector` 镜像） |
 | 队列与实时总线 | Redis + BullMQ（并发控制 / 指数退避重试）+ Redis Pub/Sub → SSE |
 | AI 编排 | Vercel AI SDK（`ai`、`@ai-sdk/openai-compatible` 及主流 Provider 适配）+ Mastra（Multi-Agent + Durable Workflows） |
@@ -26,7 +26,7 @@ fanxiaoshuo/
 ├─ packages/agents/   # 统一 LLM 网关（计量/费用/脱敏）+ Mastra 运行时与角色定义
 ├─ apps/server/       # Fastify REST/SSE API、Drizzle Schema 与迁移
 ├─ apps/worker/       # BullMQ Worker、心跳上报、冒烟任务执行
-├─ apps/web/          # Vue 3 工作台 UI（模型配置中心 / 用量与状态）
+├─ apps/web/          # Vue 3 工作台 UI（书架 / 卷章树 / TipTap 编辑器 / 模型配置 / 用量与状态）
 ├─ infra/             # docker-compose.yml、init-db.sql
 └─ openspec/          # 规格（specs）与进行中变更（changes）
 ```
@@ -97,7 +97,7 @@ pnpm dev
 
 | 服务 | 地址 |
 |---|---|
-| 工作台前端 | http://127.0.0.1:5173 （模型配置：`/models`；用量与状态：`/runtime`） |
+| 工作台前端 | http://127.0.0.1:5173 （书架：`/books`；写作工作区：`/books/:bookId/:chapterId?`；模型配置：`/models`；用量与状态：`/runtime`） |
 | Fastify API | http://127.0.0.1:3001 |
 | 健康检查 | http://127.0.0.1:3001/api/v1/health |
 | 用量日志 | http://127.0.0.1:3001/api/v1/usage-logs |
@@ -111,6 +111,7 @@ pnpm dev
 2. 在 Provider 下新增模型并配置输入/输出单价。
 3. 为 4 个写书角色绑定默认模型，点击「一键测通」验证连通性（会真实调用并落盘用量日志）。
 4. 打开 `/runtime` 确认 PG / Redis / Worker 诊断卡片全部绿色，触发一次冒烟任务观察 SSE 状态流转。
+5. 打开 `/books` 新建作品 → 进入 `/books/:bookId` 建卷建章 → 在 TipTap 编辑器里写正文并「保存」→「保存快照」留底、随时回滚 → 「导出」整本 TXT / Markdown。
 
 ---
 
@@ -182,6 +183,29 @@ pnpm --filter @fanxiaoshuo/web run typecheck
 | POST | `/runtime/smoke-jobs` | 入队 Mastra + BullMQ 冒烟任务 |
 | GET | `/runtime/smoke-jobs/:jobId` | 查询冒烟任务状态 |
 | GET | `/runtime/events` | SSE 实时事件流（Redis Pub/Sub 转发） |
+
+### 书库 / 卷章 / 正文 / 快照 / 导出（Change 2）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET/POST | `/books` | 书架列表（`status` / `q` / `includeDeleted` 筛选）与新建作品 |
+| GET/PATCH/DELETE | `/books/:bookId` | 作品详情、元信息更新、软删入回收站（`?permanent=true` 仅对回收站内作品生效） |
+| POST | `/books/:bookId/restore` | 从回收站恢复作品 |
+| GET | `/books/:bookId/tree` | 卷章目录树（分卷 + 章节顺序，驱动左侧大纲） |
+| GET | `/books/:bookId/trash` | 作品回收站内的分卷 / 章节清单 |
+| GET | `/books/:bookId/export` | 整本导出（`format=txt\|md`，返回文件流 + `Content-Disposition`） |
+| POST | `/books/:bookId/volumes` | 新建分卷 |
+| PUT | `/books/:bookId/volumes/reorder` | 分卷排序 |
+| PUT | `/books/:bookId/chapters/reorder` | 章节同卷排序与跨卷移动（单事务） |
+| POST | `/books/:bookId/chapters` | 新建章节 |
+| PATCH/DELETE | `/volumes/:volumeId` | 分卷重命名 / 软删 |
+| POST | `/volumes/:volumeId/restore` | 恢复分卷 |
+| GET/PATCH/DELETE | `/chapters/:chapterId` | 章节详情（含正文与 `version`）、元信息更新、软删 |
+| POST | `/chapters/:chapterId/restore` | 恢复章节 |
+| GET/PUT | `/chapters/:chapterId/content` | 读取 / 保存正文（携带 `expectedVersion` 做乐观并发校验，冲突返回 `409 CHAPTER_VERSION_CONFLICT`） |
+| GET/POST | `/chapters/:chapterId/revisions` | 历史快照列表（倒序）与手动留底（返回快照详情，含正文） |
+| GET | `/chapters/:chapterId/revisions/:revisionId` | 快照详情（回滚前预览） |
+| POST | `/chapters/:chapterId/revisions/:revisionId/restore` | 安全回滚：先把当前正文自动留底为 `restore` 快照，再写入历史正文 |
 
 ---
 
