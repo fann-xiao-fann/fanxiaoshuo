@@ -22,6 +22,9 @@ export * from './context/context-assembler.js';
 
 export * from './prompts/chapter-writer.js';
 export * from './prompts/batch-workflow.js';
+export * from './prompts/toolbox.js';
+
+export * from './toolbox/run-toolbox-tool.js';
 
 /**
  * 批量单章工作流：仅导出业务契约、固定 ID 与错误类型，
