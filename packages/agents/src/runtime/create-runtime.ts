@@ -4,13 +4,21 @@ import { Agent } from '@mastra/core/agent';
 import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { ModelGateway } from '../gateway/model-gateway.js';
-import { asRecord, ModelGatewayError } from '../gateway/errors.js';
+import { asRecord, isModelGatewayError, ModelGatewayError } from '../gateway/errors.js';
 import { sanitizeErrorMessage } from '../gateway/sanitize.js';
 import {
   resolvedModelConfigSchema,
   type ResolvedModelConfig,
   type UsageLogger,
 } from '../gateway/types.js';
+import {
+  BATCH_CHAPTER_WORKFLOW_ID,
+  createBatchChapterWorkflow,
+  type BatchChapterWorkflowHooks,
+  type BatchChapterWorkflowInput,
+  type BatchChapterWorkflowResult,
+  type BatchChapterWorkflowRunInput,
+} from '../workflows/batch-chapter-workflow.js';
 import {
   WRITING_AGENT_DEFINITIONS,
   getWritingAgentDefinition,
@@ -89,6 +97,16 @@ export interface FanXiaoshuoRuntime {
   getAgentRoleDefinition(role: AgentRole): WritingAgentDefinition;
   /** 执行 Mastra + Gateway 全链路冒烟工作流 */
   runSmokeWorkflow(input: SmokeWorkflowInput): Promise<SmokeWorkflowResult>;
+  /**
+   * 执行 Mastra 单章批量工作流（`plan-outline` → `draft-and-review` → `extract-summary`）。
+   *
+   * 所有模型调用均经 `ModelGateway` 并实时透传 `budgetContext`；
+   * 预算熔断（`BudgetExceededError`）与网关错误会原样上抛，由 Worker 转为 `paused` 或步骤失败。
+   */
+  runBatchChapterWorkflow(
+    input: BatchChapterWorkflowInput,
+    hooks?: BatchChapterWorkflowHooks,
+  ): Promise<BatchChapterWorkflowResult>;
 }
 
 /** `createFanXiaoshuoRuntime` 参数。 */
@@ -158,6 +176,9 @@ export function createFanXiaoshuoRuntime(
       ...(options.usageLogger === undefined ? {} : { usageLogger: options.usageLogger }),
     });
   const roleModelPlaceholder = options.roleModelPlaceholder ?? DEFAULT_ROLE_MODEL_PLACEHOLDER;
+
+  /** 单章批量工作流：runId → 最近一次捕获到的网关错误（用于原样上抛） */
+  const batchGatewayFailures = new Map<string, ModelGatewayError>();
 
   const agents: Record<string, Agent> = {};
   for (const definition of WRITING_AGENT_DEFINITIONS) {
@@ -264,13 +285,24 @@ export function createFanXiaoshuoRuntime(
     .then(finalizeStep)
     .commit();
 
+  const batchChapterWorkflow = createBatchChapterWorkflow(gateway, {
+    // Mastra 会把 Step 抛出的异常序列化为普通 Error（丢失 category / code），
+    // 因此由工作流内部捕获网关错误，门面再原样上抛，保证 BudgetExceededError 不被降级。
+    onGatewayFailure: (runId, error) => {
+      batchGatewayFailures.set(runId, error);
+    },
+  });
+
   const mastra = new Mastra({
     agents,
-    workflows: { [SMOKE_WORKFLOW_ID]: workflow },
+    workflows: {
+      [SMOKE_WORKFLOW_ID]: workflow,
+      [BATCH_CHAPTER_WORKFLOW_ID]: batchChapterWorkflow,
+    },
     logger: false,
   });
 
-  // 启动期自检：确保 4 个角色与工作流均已成功注册（失败则尽早暴露）。
+  // 启动期自检：确保 4 个角色与 2 条工作流均已成功注册（失败则尽早暴露）。
   const registeredAgentIds = WRITING_AGENT_DEFINITIONS.map((definition) => definition.role);
   for (const role of registeredAgentIds) {
     if (!mastra.getAgent(role)) {
@@ -279,6 +311,9 @@ export function createFanXiaoshuoRuntime(
   }
   if (!mastra.getWorkflow(SMOKE_WORKFLOW_ID)) {
     throw new Error(`Mastra Workflow 注册失败：${SMOKE_WORKFLOW_ID}`);
+  }
+  if (!mastra.getWorkflow(BATCH_CHAPTER_WORKFLOW_ID)) {
+    throw new Error(`Mastra Workflow 注册失败：${BATCH_CHAPTER_WORKFLOW_ID}`);
   }
 
   return {
@@ -330,7 +365,95 @@ export function createFanXiaoshuoRuntime(
         steps: extractStepTimings(result.steps),
       };
     },
+    async runBatchChapterWorkflow(
+      input: BatchChapterWorkflowInput,
+      hooks: BatchChapterWorkflowHooks = {},
+    ): Promise<BatchChapterWorkflowResult> {
+      const batchWorkflow = mastra.getWorkflow(BATCH_CHAPTER_WORKFLOW_ID);
+      const run = await batchWorkflow.createRun();
+      // 同一个 runId 会被 Worker 逐章复用，开跑前先清空上一章可能残留的错误。
+      batchGatewayFailures.delete(input.runId);
+      const runInput: BatchChapterWorkflowRunInput = { input, hooks };
+      const result = await run.start({ inputData: runInput });
+
+      const deferredFailure = batchGatewayFailures.get(input.runId);
+      batchGatewayFailures.delete(input.runId);
+      if (deferredFailure) {
+        // 关键：预算熔断与网关错误必须原样透传，绝不能被包成普通 INTERNAL_ERROR。
+        throw deferredFailure;
+      }
+
+      if (result.status !== 'success') {
+        const cause = 'error' in result ? result.error : undefined;
+        throw normalizeBatchChapterWorkflowError(cause, input);
+      }
+
+      return {
+        workflowId: BATCH_CHAPTER_WORKFLOW_ID,
+        mastraRunId: run.runId,
+        ...result.result,
+      };
+    },
   };
+}
+
+/**
+ * 收集本批次全部角色模型的 API Key（仅供错误文本脱敏使用，绝不落盘或返回）。
+ */
+function collectModelApiKeys(input: BatchChapterWorkflowInput): string[] {
+  const keys: string[] = [];
+  const models = input.models;
+  for (const model of [models.showrunner, models.writer, models.critic, models.lorekeeper]) {
+    if (model && model.config.apiKey) keys.push(model.config.apiKey);
+  }
+  return keys;
+}
+
+/**
+ * 从 Mastra 包装后的错误链中找回原始网关错误。
+ * `BudgetExceededError` / `ModelGatewayError` 必须原样返回，保证 Worker 能按 `code` 精准熔断。
+ */
+function findGatewayError(error: unknown, depth = 0): ModelGatewayError | null {
+  if (depth > 6 || error === null || error === undefined) return null;
+  if (isModelGatewayError(error)) return error;
+
+  const record = asRecord(error);
+  if (!record) return null;
+
+  const candidates: unknown[] = [record['cause'], record['error'], record['originalError'], record['errors']];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) {
+        const found = findGatewayError(item, depth + 1);
+        if (found) return found;
+      }
+      continue;
+    }
+    const found = findGatewayError(candidate, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * 归一化单章工作流的失败原因：
+ * 网关错误原样上抛；其余异常包成已脱敏的 `ModelGatewayError`（避免泄露明文 API Key）。
+ */
+function normalizeBatchChapterWorkflowError(
+  error: unknown,
+  input: BatchChapterWorkflowInput,
+): ModelGatewayError {
+  const gatewayError = findGatewayError(error);
+  if (gatewayError) return gatewayError;
+
+  return new ModelGatewayError(
+    sanitizeErrorMessage(error ?? 'Mastra 单章批量工作流状态异常', collectModelApiKeys(input)),
+    {
+      category: 'PROVIDER_ERROR',
+      code: API_ERROR_CODES.INTERNAL_ERROR,
+      cause: error,
+    },
+  );
 }
 
 /**

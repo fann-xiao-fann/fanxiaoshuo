@@ -21,3 +21,22 @@ export * from './context/card-recall.js';
 export * from './context/context-assembler.js';
 
 export * from './prompts/chapter-writer.js';
+export * from './prompts/batch-workflow.js';
+
+/**
+ * 批量单章工作流：仅导出业务契约、固定 ID 与错误类型，
+ * 绝不导出 `createBatchChapterWorkflow`（其签名引用 Mastra 内部类型）。
+ */
+export { BATCH_CHAPTER_WORKFLOW_ID } from './workflows/batch-chapter-workflow.js';
+export type {
+  BatchChapterStopDecision,
+  BatchChapterWorkflowBudget,
+  BatchChapterWorkflowChapterInput,
+  BatchChapterWorkflowHooks,
+  BatchChapterWorkflowInput,
+  BatchChapterWorkflowModels,
+  BatchChapterWorkflowOutput,
+  BatchChapterWorkflowResult,
+  BatchChapterWorkflowStageMeta,
+  WorkflowRoleModelInput,
+} from './workflows/batch-chapter-workflow.js';
