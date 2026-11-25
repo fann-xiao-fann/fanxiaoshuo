@@ -135,3 +135,28 @@ export function truncateMiddle(value: string, maxLength = 48): string {
   const tail = Math.floor((maxLength - 1) / 2);
   return `${value.slice(0, head)}…${value.slice(value.length - tail)}`;
 }
+
+/**
+ * 网文字数格式化：中文语境下「1.2 万字」「12.3 万字」比千分位更易读。
+ * 小于 1 万保留原样数字 + 「字」。
+ */
+export function formatWordCount(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '—';
+  }
+  const words = Math.max(0, Math.round(value));
+  if (words < 10_000) {
+    return `${numberFormatter.format(words)} 字`;
+  }
+  const scaled = words / 10_000;
+  const digits = scaled >= 100 ? 0 : 1;
+  return `${scaled.toFixed(digits).replace(/\.0$/, '')} 万字`;
+}
+
+/** 写作进度百分比（0–100，用于目标字数进度条）。 */
+export function formatProgressPercent(value: number, target: number): number {
+  if (!Number.isFinite(value) || !Number.isFinite(target) || target <= 0) {
+    return 0;
+  }
+  return Math.min(100, Math.max(0, Math.round((value / target) * 100)));
+}

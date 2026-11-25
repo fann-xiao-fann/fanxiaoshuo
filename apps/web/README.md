@@ -27,13 +27,13 @@ pnpm --filter @fanxiaoshuo/web build
 ```text
 src/
   api/         强类型 API 客户端（Zod 校验响应、统一 ApiClientError）
-  components/  工作台组件：健康徽章、模型配置面板、运行期面板
+  components/  工作台组件：健康徽章、模型配置、运行期面板、书架卡片与写作工作区（卷章树 / TipTap 编辑器 / 快照抽屉）
   layouts/     WorkbenchLayout：可折叠侧边导航 + 顶部状态栏
-  router/      路由壳、5 个导航入口、404 回退
-  stores/      theme / health / registry（Pinia）
+  router/      路由壳、5 个导航入口、书架与 /books/:bookId/:chapterId? 写作工作区、404 回退
+  stores/      theme / health / registry / books / book-workspace（Pinia）
   styles/      明暗双主题 CSS 变量与工作台样式
-  utils/       数值、金额、时间与角色名格式化
-  views/       模型配置、用量与状态、三个占位页、404
+  utils/       数值、金额、时间与角色名格式化、字数格式化、TipTap 文档 ↔ 纯文本转换、保存状态文案
+  views/       书架、写作工作区、模型配置、用量与状态、两个占位页、404
 ```
 
 ## 主题与首屏防闪白

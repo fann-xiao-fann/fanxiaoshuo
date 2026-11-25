@@ -16,11 +16,12 @@ import {
   HardwareChipOutline,
   PulseOutline,
 } from '@vicons/ionicons5';
-import { computed, h, onMounted, onUnmounted, ref } from 'vue';
+import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import HealthBadge from '@/components/HealthBadge.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { NAV_ITEMS, type PageMeta } from '@/router/routes';
+import { useBookWorkspaceStore } from '@/stores/book-workspace';
 import { useHealthStore } from '@/stores/health';
 
 const SIDER_STORAGE_KEY = 'fx.ui.sider.collapsed';
@@ -28,6 +29,20 @@ const SIDER_STORAGE_KEY = 'fx.ui.sider.collapsed';
 const route = useRoute();
 const router = useRouter();
 const health = useHealthStore();
+const workspace = useBookWorkspaceStore();
+
+/** 沉浸写作模式：隐藏主侧边栏与顶部栏，把整屏留给正文编辑区。 */
+const immersive = computed(() => workspace.immersive);
+
+// 离开写作工作区时自动恢复常规布局，避免沉浸状态污染其他页面。
+watch(
+  () => route.path,
+  (path) => {
+    if (!path.startsWith('/books/')) {
+      workspace.exitImmersive();
+    }
+  },
+);
 
 function resolveCollapsed(): boolean {
   if (typeof window === 'undefined') {
@@ -104,6 +119,18 @@ const currentNavCaption = computed(() => {
   return NAV_ITEMS.find((item) => item.key === navKey)?.caption ?? '工作台';
 });
 
+/**
+ * `<router-view>` 的 key：写作工作区只在「切换书籍」时重新挂载，
+ * 同书内切换章节由工作区自行同步，避免整页重建导致输入中断。
+ */
+const viewKey = computed<string>(() => {
+  const bookId = route.params.bookId;
+  if (typeof bookId === 'string' && bookId.length > 0) {
+    return `book-workspace:${bookId}`;
+  }
+  return typeof route.name === 'string' ? route.name : route.path;
+});
+
 onMounted(() => {
   health.startPolling();
 });
@@ -114,8 +141,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <n-layout has-sider class="fx-shell">
+  <n-layout :has-sider="!immersive" class="fx-shell" :class="{ 'fx-shell--immersive': immersive }">
     <n-layout-sider
+      v-if="!immersive"
       class="fx-shell__sider"
       bordered
       collapse-mode="width"
@@ -170,14 +198,14 @@ onUnmounted(() => {
         </nav>
 
         <div class="fx-sider-footer">
-          <div>Change 1 · 底座与模型配置</div>
+          <div>书架 · 卷章编辑</div>
           <div style="margin-top: 2px; opacity: 0.8">v0.1.0 · 内部使用</div>
         </div>
       </div>
     </n-layout-sider>
 
     <n-layout class="fx-shell__main">
-      <n-layout-header bordered class="fx-topbar">
+      <n-layout-header v-if="!immersive" bordered class="fx-topbar">
         <div class="fx-topbar__context">
           <div class="fx-topbar__eyebrow">
             <span>梵小说 · 内部批量创作台</span>
@@ -196,10 +224,10 @@ onUnmounted(() => {
         </div>
       </n-layout-header>
 
-      <main class="fx-content">
-        <router-view v-slot="{ Component, route: currentRoute }">
+      <main class="fx-content" :class="{ 'fx-content--immersive': immersive }">
+        <router-view v-slot="{ Component }">
           <transition name="fx-fade-slide" mode="out-in">
-            <component :is="Component" :key="currentRoute.path" />
+            <component :is="Component" :key="viewKey" />
           </transition>
         </router-view>
       </main>

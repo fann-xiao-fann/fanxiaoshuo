@@ -1,0 +1,728 @@
+/**
+ * 「梵小说」书库 / 写作工作区 / TipTap 编辑器样式。
+ *
+ * 与 `global.css` 共用明暗双主题 CSS 变量，新增块在此集中维护，
+ * 避免把书库专属规则塞进工作台壳样式里。
+ */
+
+/* ── 沉浸写作模式：整屏留给正文 ─────────────────────────────────────────── */
+.fx-shell--immersive {
+  background: var(--fx-bg-surface) !important;
+}
+
+.fx-content--immersive {
+  background-image: none !important;
+  overflow: hidden !important;
+}
+
+/* ── 书架 ───────────────────────────────────────────────────────────────── */
+.fx-books-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fx-books-toolbar__filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fx-books-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--fx-text-tertiary);
+  flex-wrap: wrap;
+}
+
+.fx-books-summary__item strong {
+  margin-left: 4px;
+  font-family: var(--fx-font-mono);
+  font-size: 13px;
+  color: var(--fx-text-primary);
+}
+
+.fx-books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.fx-book-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--fx-border-color);
+  border-radius: var(--fx-radius-lg);
+  background: var(--fx-bg-surface);
+  box-shadow: var(--fx-shadow-soft);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  min-width: 0;
+}
+
+.fx-book-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--fx-border-strong);
+}
+
+.fx-book-card:focus-visible {
+  outline: 2px solid var(--fx-accent);
+  outline-offset: 2px;
+}
+
+.fx-book-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fx-book-card__title {
+  font-size: 16px;
+  font-weight: 680;
+  line-height: 1.35;
+  color: var(--fx-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.fx-book-card__meta {
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  color: var(--fx-text-tertiary);
+}
+
+.fx-book-card__synopsis {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 38px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fx-text-secondary);
+}
+
+.fx-book-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 0 2px;
+  border-top: 1px dashed var(--fx-border-color);
+}
+
+.fx-book-card__stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fx-text-tertiary);
+}
+
+.fx-book-card__stat-value {
+  margin-top: 3px;
+  font-family: var(--fx-font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fx-text-primary);
+}
+
+.fx-book-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fx-book-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fx-book-card__updated {
+  font-size: 11px;
+  color: var(--fx-text-tertiary);
+}
+
+.fx-trash-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--fx-border-color);
+  border-radius: var(--fx-radius-md);
+  background: var(--fx-bg-elevated);
+}
+
+.fx-trash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── 写作工作区三栏布局 ─────────────────────────────────────────────────── */
+.fx-workspace {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  background: var(--fx-bg-canvas);
+}
+
+.fx-workspace__aside {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--fx-border-color);
+  background: var(--fx-bg-surface);
+  min-height: 0;
+}
+
+.fx-workspace__panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fx-workspace__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fx-tree-head {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--fx-border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fx-tree-head__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fx-text-secondary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.fx-tree-head__back:hover {
+  color: var(--fx-accent);
+}
+
+.fx-tree-head__title {
+  font-size: 16px;
+  font-weight: 680;
+  line-height: 1.35;
+  color: var(--fx-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.fx-tree-head__stats {
+  display: flex;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--fx-text-tertiary);
+  flex-wrap: wrap;
+}
+
+.fx-tree-head__stats strong {
+  font-family: var(--fx-font-mono);
+  color: var(--fx-text-primary);
+}
+
+.fx-tree-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fx-tree-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 10px 24px;
+}
+
+.fx-tree-volume {
+  margin-bottom: 8px;
+  border: 1px solid var(--fx-border-color);
+  border-radius: var(--fx-radius-md);
+  background: var(--fx-bg-elevated);
+  overflow: hidden;
+}
+
+.fx-tree-volume__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 8px 10px;
+}
+
+.fx-tree-volume__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.fx-tree-volume__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 640;
+  color: var(--fx-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-tree-volume__count {
+  font-family: var(--fx-font-mono);
+  font-size: 10.5px;
+  color: var(--fx-text-tertiary);
+  white-space: nowrap;
+}
+
+.fx-tree-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px 8px;
+}
+
+.fx-tree-chapter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px 5px 8px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: var(--fx-text-secondary);
+  text-align: left;
+  min-width: 0;
+  width: 100%;
+}
+
+.fx-tree-chapter:focus-visible {
+  outline: 2px solid var(--fx-accent);
+  outline-offset: -2px;
+}
+
+.fx-tree-chapter:hover {
+  background: var(--fx-bg-subtle);
+  color: var(--fx-text-primary);
+}
+
+.fx-tree-chapter--active {
+  background: var(--fx-accent-soft);
+  border-color: var(--fx-accent-soft);
+  color: var(--fx-accent);
+  font-weight: 620;
+}
+
+.fx-tree-chapter__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fx-tree-chapter__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fx-tree-chapter__words {
+  font-family: var(--fx-font-mono);
+  font-size: 10px;
+  color: var(--fx-text-tertiary);
+  white-space: nowrap;
+}
+
+.fx-tree-chapter__more {
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.fx-tree-chapter:hover .fx-tree-chapter__more,
+.fx-tree-chapter--active .fx-tree-chapter__more,
+.fx-tree-chapter__more:focus-visible {
+  opacity: 1;
+}
+
+.fx-tree-ungrouped {
+  margin-top: 10px;
+  border: 1px dashed var(--fx-border-strong);
+  border-radius: var(--fx-radius-md);
+  padding: 8px;
+}
+
+.fx-tree-ungrouped__caption {
+  padding: 2px 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fx-text-tertiary);
+}
+
+.fx-workspace__empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+}
+
+.fx-workspace__empty-card {
+  max-width: 480px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: 32px;
+  border: 1px dashed var(--fx-border-strong);
+  border-radius: var(--fx-radius-lg);
+  background: var(--fx-bg-surface);
+}
+
+/* ── 编辑器 ─────────────────────────────────────────────────────────────── */
+.fx-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--fx-bg-surface);
+}
+
+.fx-editor__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--fx-border-color);
+  background: var(--fx-bg-surface);
+}
+
+.fx-editor__title-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.fx-editor__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.fx-editor__words {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--fx-font-mono);
+  font-size: 12px;
+  color: var(--fx-text-secondary);
+}
+
+.fx-editor__words strong {
+  font-size: 14px;
+  color: var(--fx-text-primary);
+}
+
+.fx-editor__formatbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 18px;
+  border-bottom: 1px solid var(--fx-border-color);
+  background: var(--fx-bg-elevated);
+  flex-wrap: wrap;
+}
+
+.fx-editor__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--fx-bg-surface);
+}
+
+.fx-editor__canvas {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 28px 32px 160px;
+}
+
+.fx-prose {
+  font-size: 16px;
+  line-height: 2;
+  color: var(--fx-text-primary);
+  letter-spacing: 0.01em;
+}
+
+.fx-prose .ProseMirror {
+  min-height: 60vh;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.fx-prose .ProseMirror p {
+  margin: 0 0 1em;
+  text-indent: 2em;
+}
+
+.fx-prose .ProseMirror p.is-empty::before,
+.fx-prose .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--fx-text-tertiary);
+  text-indent: 2em;
+}
+
+.fx-prose .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--fx-border-strong);
+  margin: 1.6em 0;
+}
+
+.fx-prose .ProseMirror strong {
+  font-weight: 700;
+}
+
+.fx-prose .ProseMirror em {
+  font-style: italic;
+}
+
+.fx-immersive {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--fx-bg-surface);
+}
+
+.fx-immersive__bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--fx-border-color);
+  background: var(--fx-bg-surface);
+  box-shadow: 0 8px 20px -18px rgba(16, 24, 40, 0.5);
+}
+
+.fx-immersive__spacer {
+  flex: 1;
+}
+
+.fx-immersive__canvas {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 32px 24px 160px;
+}
+
+.fx-immersive__canvas .fx-prose {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.fx-save-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--fx-border-color);
+  background: var(--fx-bg-elevated);
+  color: var(--fx-text-secondary);
+  white-space: nowrap;
+}
+
+.fx-save-badge--saved {
+  color: var(--fx-success);
+  border-color: var(--fx-success-soft);
+  background: var(--fx-success-soft);
+}
+
+.fx-save-badge--dirty {
+  color: var(--fx-warning);
+  border-color: var(--fx-warning-soft);
+  background: var(--fx-warning-soft);
+}
+
+.fx-save-badge--saving {
+  color: var(--fx-info);
+  border-color: var(--fx-info-soft);
+  background: var(--fx-info-soft);
+}
+
+.fx-save-badge--error,
+.fx-save-badge--conflict {
+  color: var(--fx-danger);
+  border-color: var(--fx-danger-soft);
+  background: var(--fx-danger-soft);
+}
+
+.fx-revision-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fx-revision-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--fx-border-color);
+  border-radius: var(--fx-radius-md);
+  background: var(--fx-bg-elevated);
+}
+
+.fx-revision-item__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fx-revision-item__title {
+  font-size: 13px;
+  font-weight: 640;
+  color: var(--fx-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.fx-revision-item__meta {
+  font-family: var(--fx-font-mono);
+  font-size: 11px;
+  color: var(--fx-text-tertiary);
+}
+
+.fx-revision-preview {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  border-radius: var(--fx-radius-sm);
+  border: 1px solid var(--fx-border-color);
+  background: var(--fx-bg-subtle);
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fx-conflict-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--fx-text-secondary);
+}
+
+.fx-move-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.fx-move-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--fx-border-color);
+  border-radius: var(--fx-radius-sm);
+  background: var(--fx-bg-elevated);
+  cursor: pointer;
+  font: inherit;
+  color: var(--fx-text-primary);
+  text-align: left;
+}
+
+.fx-move-option:hover {
+  border-color: var(--fx-accent);
+  background: var(--fx-accent-soft);
+}
+
+.fx-move-option--active {
+  border-color: var(--fx-accent);
+  background: var(--fx-accent-soft);
+  color: var(--fx-accent);
+}
+
+@media (max-width: 1100px) {
+  .fx-workspace__aside {
+    width: 268px;
+  }
+}
+
+@media (max-width: 900px) {
+  .fx-books-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fx-editor__canvas {
+    padding: 20px 18px 140px;
+  }
+}

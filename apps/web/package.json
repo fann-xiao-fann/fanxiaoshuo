@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@fanxiaoshuo/shared": "workspace:*",
+    "@tiptap/extension-placeholder": "^3.35.0",
+    "@tiptap/starter-kit": "^3.35.0",
+    "@tiptap/vue-3": "^3.35.0",
     "@vicons/ionicons5": "^0.13.0",
     "naive-ui": "^2.45.3",
     "pinia": "^4.1.0",
