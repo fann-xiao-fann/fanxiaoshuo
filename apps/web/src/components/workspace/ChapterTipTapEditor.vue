@@ -26,14 +26,17 @@ import {
 } from '@vicons/ionicons5';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { describeError } from '@/api/errors';
+import { useBookBibleStore } from '@/stores/book-bible';
 import { useBookWorkspaceStore } from '@/stores/book-workspace';
 import {
   createEmptyDoc,
+  plainTextToTiptapDoc,
   resolveEditorContent,
   tiptapDocToPlainText,
 } from '@/utils/editor-content';
 import { formatInteger, formatProgressPercent } from '@/utils/format';
 import { describeSaveStatus } from '@/utils/save-status';
+import type { EditorSelectionReplacement, WorkspaceEditorBridge } from './editor-bridge';
 import TextPromptModal from './TextPromptModal.vue';
 
 const emit = defineEmits<{
@@ -42,6 +45,7 @@ const emit = defineEmits<{
 }>();
 
 const workspace = useBookWorkspaceStore();
+const bookBible = useBookBibleStore();
 const message = useMessage();
 const snapshotVisible = ref(false);
 const snapshotLoading = ref(false);
@@ -81,6 +85,16 @@ const editor = useEditor({
       contentText: tiptapDocToPlainText(json),
       contentJson: json,
     });
+  },
+  /** 选区变化时把当前非空选中文本与位置同步给右侧 AI 助手。 */
+  onSelectionUpdate: ({ editor: instance }) => {
+    const { from, to } = instance.state.selection;
+    if (from === to) {
+      bookBible.clearSelection();
+      return;
+    }
+    const text = instance.state.doc.textBetween(from, to, '\n', '\n');
+    bookBible.setSelection({ text, from, to });
   },
 });
 
@@ -207,12 +221,62 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 }
 
+/**
+ * 生成「用 AI 文本替换当前选区」后的整章内容。
+ *
+ * 优先在克隆事务上精准替换（保留其余段落结构），
+ * 若选区跨越块级边界导致结构不合法，则安全降级为纯文本定位替换。
+ */
+function buildReplacedSelectionContent(replacementText: string): EditorSelectionReplacement | null {
+  const instance = editor.value;
+  if (instance === undefined) {
+    return null;
+  }
+  const { from, to } = instance.state.selection;
+  if (from === to) {
+    return null;
+  }
+  const normalized = replacementText.replace(/\r\n?/g, '\n').trim();
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  try {
+    const transaction = instance.state.tr;
+    if (!normalized.includes('\n')) {
+      transaction.insertText(normalized, from, to);
+    } else {
+      const replacementDoc = instance.schema.nodeFromJSON(plainTextToTiptapDoc(normalized));
+      transaction.replaceWith(from, to, replacementDoc.content);
+    }
+    const json = transaction.doc.toJSON() as TiptapJson;
+    return { contentText: tiptapDocToPlainText(json), contentJson: json };
+  } catch {
+    // 结构不兼容（如跨块选区）：按纯文本定位替换，保证不丢正文。
+    const base = workspace.draftContentText;
+    const selected = instance.state.doc.textBetween(from, to, '\n', '\n');
+    const index = selected.length > 0 ? base.indexOf(selected) : -1;
+    const next =
+      index >= 0
+        ? `${base.slice(0, index)}${normalized}${base.slice(index + selected.length)}`
+        : base.trim().length > 0
+          ? `${base}\n\n${normalized}`
+          : normalized;
+    return { contentText: next, contentJson: plainTextToTiptapDoc(next) };
+  }
+}
+
+const exposedBridge: WorkspaceEditorBridge = { buildReplacedSelectionContent };
+
+defineExpose(exposedBridge);
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
+  bookBible.clearSelection();
 });
 </script>
 

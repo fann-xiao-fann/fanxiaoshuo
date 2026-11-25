@@ -9,15 +9,21 @@ import ChapterRevisionsDrawer from '@/components/workspace/ChapterRevisionsDrawe
 import ChapterTipTapEditor from '@/components/workspace/ChapterTipTapEditor.vue';
 import BookTrashDrawer from '@/components/workspace/BookTrashDrawer.vue';
 import TextPromptModal from '@/components/workspace/TextPromptModal.vue';
+import WorkspaceAssistantPanel from '@/components/workspace/WorkspaceAssistantPanel.vue';
 import WorkspaceTreePanel from '@/components/workspace/WorkspaceTreePanel.vue';
+import type { WorkspaceEditorBridge } from '@/components/workspace/editor-bridge';
+import { useBookBibleStore } from '@/stores/book-bible';
 import { useBookWorkspaceStore } from '@/stores/book-workspace';
 import { formatInteger, formatWordCount } from '@/utils/format';
 
 const route = useRoute();
 const router = useRouter();
 const workspace = useBookWorkspaceStore();
+const bookBible = useBookBibleStore();
 const dialog = useDialog();
 const message = useMessage();
+
+const editorRef = ref<WorkspaceEditorBridge | null>(null);
 
 const treeCollapsed = ref(false);
 const trashVisible = ref(false);
@@ -58,7 +64,9 @@ function promptDiscard(targetId: string): void {
       void workspace.openChapter(targetId, { flush: false }).then(
         (ok) => {
           if (ok) {
+            bookBible.resetForChapter();
             syncUrl(targetId);
+            void bookBible.loadChapterSummary(targetId);
           }
         },
         (error: unknown) => message.error(describeError(error)),
@@ -78,10 +86,18 @@ async function selectChapter(targetId: string): Promise<void> {
       promptDiscard(targetId);
       return;
     }
+    // 切章成功后立即清空上一章的记忆 / 预览 / 选区，再拉取新章摘要。
+    bookBible.resetForChapter();
     syncUrl(targetId);
+    await bookBible.loadChapterSummary(targetId);
   } catch (error) {
     message.error(describeError(error));
   }
+}
+
+/** 加载书籍级设定记忆（总大纲 + 设定卡），与目录树并行。 */
+async function bootstrapBookBible(): Promise<void> {
+  await bookBible.loadBookBible(bookId.value);
 }
 
 async function bootstrap(): Promise<void> {
@@ -89,6 +105,8 @@ async function bootstrap(): Promise<void> {
     return;
   }
   workspace.reset();
+  bookBible.reset();
+  const bibleLoad = bootstrapBookBible();
   try {
     await workspace.loadTree(bookId.value);
   } catch (error) {
@@ -100,6 +118,8 @@ async function bootstrap(): Promise<void> {
   if (preferred !== null) {
     await selectChapter(preferred);
   }
+  // 设定记忆不阻断正文打开：并行加载完成后收敛即可。
+  await bibleLoad;
 }
 
 async function createFirstChapter(title: string): Promise<void> {
@@ -163,17 +183,27 @@ watch(routeChapterId, (chapterId) => {
   if (chapterId === null || chapterId === workspace.currentChapterId) {
     return;
   }
+  // 路由切书时由 `bookId` 监听器统一重载，避免先用旧书状态打开新章。
+  if (workspace.bookId !== bookId.value) {
+    return;
+  }
   void selectChapter(chapterId);
 });
 
-watch(
-  () => workspace.bookId,
-  (current, previous) => {
-    if (current !== null && previous !== null && current !== previous) {
-      void bootstrap();
-    }
-  },
-);
+/**
+ * 只监听路由 `bookId` 参数：
+ * 之前监听 `workspace.bookId` 时，`reset()` 把它置为 null 会打断后续重载，
+ * 且同书内切换章节也会被误判为换书。
+ */
+watch(bookId, (current, previous) => {
+  if (current.length === 0) {
+    return;
+  }
+  if (previous === undefined || previous === current) {
+    return;
+  }
+  void bootstrap();
+});
 
 onMounted(() => {
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -183,10 +213,12 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload);
   workspace.cancelAutoSave();
+  bookBible.reset();
 });
 
 onBeforeRouteLeave(async () => {
   workspace.cancelAutoSave();
+  bookBible.abortActiveStream();
   if (workspace.immersive) {
     workspace.exitImmersive();
   }
@@ -245,6 +277,7 @@ onBeforeRouteLeave(async () => {
 
       <chapter-tip-tap-editor
         v-else-if="chapter !== null"
+        ref="editorRef"
         @open-revisions="revisionsVisible = true"
       />
 
@@ -279,6 +312,10 @@ onBeforeRouteLeave(async () => {
         </div>
       </div>
     </div>
+
+    <template v-if="!workspace.immersive">
+      <workspace-assistant-panel :editor-bridge="editorRef" />
+    </template>
 
     <chapter-revisions-drawer v-model:show="revisionsVisible" />
     <book-trash-drawer v-model:show="trashVisible" />
