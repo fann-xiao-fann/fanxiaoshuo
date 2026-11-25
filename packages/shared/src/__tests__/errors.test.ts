@@ -154,3 +154,36 @@ describe('Change 4 批量流水线专用错误码', () => {
     expect(apiErrorStatus('WORKFLOW_INVALID_STATE')).toBe(409);
   });
 });
+
+describe('Change 5 创作工具盒专用错误码', () => {
+  it('新增错误码字面量与值一致', () => {
+    expect(API_ERROR_CODES.TOOLBOX_TOOL_NOT_FOUND).toBe('TOOLBOX_TOOL_NOT_FOUND');
+    expect(API_ERROR_CODES.TOOLBOX_RUN_NOT_FOUND).toBe('TOOLBOX_RUN_NOT_FOUND');
+    expect(API_ERROR_CODES.TOOLBOX_ITEM_OUT_OF_RANGE).toBe('TOOLBOX_ITEM_OUT_OF_RANGE');
+  });
+
+  it('新增错误码 HTTP 状态映射符合契约（404 / 404 / 400）', () => {
+    expect(API_ERROR_HTTP_STATUS.TOOLBOX_TOOL_NOT_FOUND).toBe(404);
+    expect(API_ERROR_HTTP_STATUS.TOOLBOX_RUN_NOT_FOUND).toBe(404);
+    expect(API_ERROR_HTTP_STATUS.TOOLBOX_ITEM_OUT_OF_RANGE).toBe(400);
+    expect(apiErrorStatus('TOOLBOX_TOOL_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('TOOLBOX_RUN_NOT_FOUND')).toBe(404);
+    expect(apiErrorStatus('TOOLBOX_ITEM_OUT_OF_RANGE')).toBe(400);
+  });
+
+  it('新增错误码可被统一 ApiError 响应体使用', () => {
+    for (const code of [
+      'TOOLBOX_TOOL_NOT_FOUND',
+      'TOOLBOX_RUN_NOT_FOUND',
+      'TOOLBOX_ITEM_OUT_OF_RANGE',
+    ] as const) {
+      expect(apiErrorCodeSchema.safeParse(code).success).toBe(true);
+      expect(apiErrorSchema.safeParse({ code, message: '错误说明' }).success).toBe(true);
+    }
+  });
+
+  it('回写越界为 4xx（不重试），运行不存在为 404', () => {
+    expect(apiErrorStatus('TOOLBOX_ITEM_OUT_OF_RANGE')).toBeLessThan(500);
+    expect(apiErrorStatus('TOOLBOX_RUN_NOT_FOUND')).toBe(404);
+  });
+});

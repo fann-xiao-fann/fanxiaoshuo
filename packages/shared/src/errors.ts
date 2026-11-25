@@ -67,6 +67,12 @@ export const API_ERROR_CODES = {
   WORKFLOW_RUN_ACTIVE: 'WORKFLOW_RUN_ACTIVE',
   /** 批次当前状态不允许该操作（如对终态批次续跑） */
   WORKFLOW_INVALID_STATE: 'WORKFLOW_INVALID_STATE',
+  /** 创作工具盒工具不存在 */
+  TOOLBOX_TOOL_NOT_FOUND: 'TOOLBOX_TOOL_NOT_FOUND',
+  /** 创作工具盒运行记录不存在 */
+  TOOLBOX_RUN_NOT_FOUND: 'TOOLBOX_RUN_NOT_FOUND',
+  /** 创作工具盒结果条目索引越界（或运行未成功，不可回写） */
+  TOOLBOX_ITEM_OUT_OF_RANGE: 'TOOLBOX_ITEM_OUT_OF_RANGE',
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERROR_CODES;
@@ -112,6 +118,9 @@ export const API_ERROR_HTTP_STATUS: Record<ApiErrorCode, number> = {
   WORKFLOW_STEP_NOT_FOUND: 404,
   WORKFLOW_RUN_ACTIVE: 409,
   WORKFLOW_INVALID_STATE: 409,
+  TOOLBOX_TOOL_NOT_FOUND: 404,
+  TOOLBOX_RUN_NOT_FOUND: 404,
+  TOOLBOX_ITEM_OUT_OF_RANGE: 400,
 };
 
 /** 字段级校验问题（由 ZodError.issues 投影而来，路径用 `.` 连接）。 */
