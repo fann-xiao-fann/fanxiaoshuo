@@ -2,6 +2,7 @@
 import {
   AGENT_ROLE_LABELS,
   TOOLBOX_CATEGORY_LABELS,
+  uuidSchema,
   type BookDto,
 } from '@fanxiaoshuo/shared';
 import { NAlert, NButton, NIcon, NSpin, NTag, useMessage } from 'naive-ui';
@@ -114,7 +115,7 @@ function goToBook(bookId: string): void {
 
 function syncBookFromRoute(): void {
   const value = route.query.bookId;
-  if (typeof value === 'string' && value.length > 0) {
+  if (typeof value === 'string' && uuidSchema.safeParse(value).success) {
     store.setBookContext(value);
   }
 }
