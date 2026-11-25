@@ -35,6 +35,7 @@ import type {
   ChapterRevisionRepository,
   ChapterSummaryRepository,
   KnowledgeCardRepository,
+  ToolboxRunRepository,
   VolumeRepository,
   WorkflowRunRepository,
 } from '../../repositories/types.js';
@@ -46,6 +47,10 @@ import {
   type FakeWorkflowQueue,
   type InMemoryWorkflowState,
 } from './in-memory-workflows.js';
+import {
+  createInMemoryToolboxRunRepository,
+  type InMemoryToolboxState,
+} from './in-memory-toolbox.js';
 
 /** 测试主密钥（32 字节 hex，仅为测试固定值）。 */
 export const TEST_ENCRYPTION_KEY = 'a'.repeat(64);
@@ -67,6 +72,8 @@ export interface InMemoryStore {
   readonly chapterSummaries: ChapterSummaryRepository;
   /** 批量流水线批次 / 步骤仓储（Change 4） */
   readonly workflowRuns: WorkflowRunRepository;
+  /** 创作工具盒运行历史仓储（Change 5） */
+  readonly toolboxRuns: ToolboxRunRepository;
   /** 服务端与内存仓储共用的时钟（测试可通过 `clock` 选项注入可控时间）。 */
   readonly clock: () => Date;
   readonly state: {
@@ -86,6 +93,7 @@ export interface InMemoryStore {
     readonly summaries: InMemoryBookBibleState['summaries'];
     readonly workflowRuns: InMemoryWorkflowState['runs'];
     readonly workflowSteps: InMemoryWorkflowState['steps'];
+    readonly toolboxRuns: InMemoryToolboxState['runs'];
   };
 }
 
@@ -113,6 +121,7 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
     now,
     resolveBookTitle: (bookId) => bookRepositories.state.books.get(bookId)?.title ?? null,
   });
+  const toolboxRepositories = createInMemoryToolboxRunRepository({ now });
 
   const providerRepository: ProviderRepository = {
     async list() {
@@ -332,6 +341,7 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
     knowledgeCards: bookBibleRepositories.knowledgeCards,
     chapterSummaries: bookBibleRepositories.chapterSummaries,
     workflowRuns: workflowRepositories.workflowRuns,
+    toolboxRuns: toolboxRepositories.toolboxRuns,
     clock: now,
     state: {
       providers: providerMap,
@@ -347,6 +357,7 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
       summaries: bookBibleRepositories.state.summaries,
       workflowRuns: workflowRepositories.state.runs,
       workflowSteps: workflowRepositories.state.steps,
+      toolboxRuns: toolboxRepositories.state.runs,
     },
   };
 }
@@ -497,6 +508,7 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
     knowledgeCards: store.knowledgeCards,
     chapterSummaries: store.chapterSummaries,
     workflowRuns: store.workflowRuns,
+    toolboxRuns: store.toolboxRuns,
     workflowQueue,
     workflowEventBus,
     gateway: options.gateway ?? new ModelGateway(),

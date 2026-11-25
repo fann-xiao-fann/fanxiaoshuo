@@ -5,15 +5,21 @@ import type {
   ChapterRow,
   ChapterSummaryRow,
   KnowledgeCardRow,
+  ToolboxRunRow,
   VolumeRow,
   WorkflowRunRow,
   WorkflowStepRow,
 } from '../db/schema.js';
 import { parseBookStatus, parseChapterStatus, parseRevisionSource } from '../domain/books.js';
 import {
+  agentRoleSchema,
   apiErrorCodeSchema,
   chapterSummarySourceSchema,
   knowledgeCardCategorySchema,
+  toolboxInputsSchema,
+  toolboxOutputSchema,
+  toolboxRunStatusSchema,
+  toolboxToolIdSchema,
   workflowModeSchema,
   workflowPauseReasonSchema,
   workflowRunConfigSchema,
@@ -33,6 +39,7 @@ import type {
   ChapterRevisionRecord,
   ChapterSummaryRecord,
   KnowledgeCardRecord,
+  ToolboxRunRecord,
   VolumeRecord,
   WorkflowRunRecord,
   WorkflowStepRecord,
@@ -307,4 +314,44 @@ function parseApiErrorCodeOrNull(value: string | null): WorkflowRunRecord['error
   }
   const parsed = apiErrorCodeSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                 Change 5：创作工具盒运行历史（toolbox_runs）                 */
+/* -------------------------------------------------------------------------- */
+
+/** 工具 ID 脏数据兜底（目录调整后旧历史不因此整页报错）。 */
+const FALLBACK_TOOLBOX_TOOL_ID: ToolboxRunRecord['toolId'] = 'book-pitch';
+
+/**
+ * `toolbox_runs` 行 → 领域记录。
+ *
+ * `inputs` / `output` 均经共享契约 Schema 归一；`output_json` 无法解析时回退为 `null`，
+ * 使失败留痕记录（本身不带产出）与脏数据表现一致，不影响历史列表渲染。
+ */
+export function mapToolboxRunRow(row: ToolboxRunRow): ToolboxRunRecord {
+  const parsedToolId = toolboxToolIdSchema.safeParse(row.toolId);
+  const parsedRole = agentRoleSchema.safeParse(row.role);
+  const parsedStatus = toolboxRunStatusSchema.safeParse(row.status);
+  const parsedInputs = toolboxInputsSchema.safeParse(row.inputsJson);
+  const parsedOutput =
+    row.outputJson === null ? null : toolboxOutputSchema.safeParse(row.outputJson);
+
+  return {
+    id: row.id,
+    toolId: parsedToolId.success ? parsedToolId.data : FALLBACK_TOOLBOX_TOOL_ID,
+    bookId: row.bookId,
+    role: parsedRole.success ? parsedRole.data : 'showrunner',
+    status: parsedStatus.success ? parsedStatus.data : 'failed',
+    inputs: parsedInputs.success ? parsedInputs.data : {},
+    output: parsedOutput !== null && parsedOutput.success ? parsedOutput.data : null,
+    modelRef: row.modelRef,
+    inputTokens: row.inputTokens,
+    outputTokens: row.outputTokens,
+    estimatedCostUsd: parseNumeric(row.estimatedCostUsd),
+    latencyMs: row.latencyMs,
+    errorCode: parseApiErrorCodeOrNull(row.errorCode),
+    errorMessage: row.errorMessage,
+    createdAt: row.createdAt,
+  };
 }

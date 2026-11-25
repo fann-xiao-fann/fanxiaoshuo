@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -429,3 +430,50 @@ export const workflowSteps = pgTable(
 
 export type WorkflowRunRow = typeof workflowRuns.$inferSelect;
 export type WorkflowStepRow = typeof workflowSteps.$inferSelect;
+
+/* -------------------------------------------------------------------------- */
+/*                     Change 5：创作工具盒运行历史（toolbox_runs）                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 创作工具盒运行历史（见 `openspec/changes/toolbox-and-polish/design.md` 第 3 节）。
+ *
+ * 关键约束：
+ * - 工具盒为**同步单次调用**，不存在排队 / 运行中态，`status` 只有 `completed` / `failed`；
+ * - `book_id` 可空并 `ON DELETE SET NULL`：删书后历史仍可回看，只是不再关联作品；
+ * - `inputs_json` 落盘 `validateToolboxInputs` 归一后的输入（含默认值补全），
+ *   `output_json` 落盘 `{ overview, items[] }`，失败时为 null；
+ * - `error_message` 必须已脱敏（由网关 `sanitizeErrorMessage` 归一），禁止明文 API Key；
+ * - `estimated_cost_usd` 与 `llm_usage_logs` 同口径 `numeric(12,6)`。
+ */
+export const toolboxRuns = pgTable(
+  'toolbox_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // 6 个内置工具 ID 之一（book-pitch / character-designer / ...）
+    toolId: varchar('tool_id', { length: 64 }).notNull(),
+    bookId: uuid('book_id').references(() => books.id, { onDelete: 'set null' }),
+    role: varchar('role', { length: 32 }).notNull(),
+    // completed | failed
+    status: varchar('status', { length: 16 }).notNull(),
+    inputsJson: jsonb('inputs_json').$type<Record<string, string | number>>().notNull(),
+    outputJson: jsonb('output_json').$type<unknown>(),
+    modelRef: varchar('model_ref', { length: 256 }),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    estimatedCostUsd: numeric('estimated_cost_usd', { precision: 12, scale: 6 })
+      .notNull()
+      .default('0'),
+    latencyMs: integer('latency_ms').notNull().default(0),
+    errorCode: varchar('error_code', { length: 64 }),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('toolbox_runs_created_idx').on(table.createdAt),
+    index('toolbox_runs_book_created_idx').on(table.bookId, table.createdAt),
+    index('toolbox_runs_tool_created_idx').on(table.toolId, table.createdAt),
+  ],
+);
+
+export type ToolboxRunRow = typeof toolboxRuns.$inferSelect;

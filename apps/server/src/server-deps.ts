@@ -11,6 +11,7 @@ import type {
   KnowledgeCardRepository,
   ModelRepository,
   ProviderRepository,
+  ToolboxRunRepository,
   UsageLogRepository,
   VolumeRepository,
   WorkflowRunRepository,
@@ -58,6 +59,8 @@ export interface ServerDependencies {
   readonly chapterSummaries: ChapterSummaryRepository;
   /** 批量流水线批次 / 步骤仓储（创建、暂停、续跑、取消、单步重试与删除） */
   readonly workflowRuns: WorkflowRunRepository;
+  /** 创作工具盒运行历史仓储（追加 / 回看 / 筛选 / 删除，含脱敏错误留痕） */
+  readonly toolboxRuns: ToolboxRunRepository;
   /** BullMQ `novel-workflows` 队列 Producer（载荷仅 `{ runId }`） */
   readonly workflowQueue: WorkflowQueue;
   /** Redis `workflowEvents` Pub/Sub 总线（Worker 广播与 SSE 转发共用） */

@@ -14,6 +14,7 @@ import { registerHealthRoutes } from './routes/health.js';
 import { registerModelRoutes } from './routes/models.js';
 import { registerProviderRoutes } from './routes/providers.js';
 import { registerRuntimeRoutes } from './routes/runtime.js';
+import { registerToolboxRoutes } from './routes/toolbox.js';
 import { registerUsageLogRoutes } from './routes/usage-logs.js';
 import { registerVolumeRoutes } from './routes/volumes.js';
 import { registerWorkflowRoutes } from './routes/workflows.js';
@@ -105,6 +106,9 @@ export async function buildServer(deps: ServerDependencies): Promise<FastifyInst
 
   // Change 4：批量流水线（批次 CRUD / 生命周期控制 / SSE 实时进度）
   registerWorkflowRoutes(app, deps);
+
+  // Change 5：创作工具盒（工具目录 / 同步执行 / 历史 / 一键回写 Book Bible）
+  registerToolboxRoutes(app, deps);
 
   return app;
 }

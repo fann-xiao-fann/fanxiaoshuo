@@ -7,6 +7,10 @@ import type {
   KnowledgeCardCategory,
   ProviderProtocol,
   RevisionSource,
+  ToolboxInputs,
+  ToolboxOutput,
+  ToolboxRunStatus,
+  ToolboxToolId,
   UsageLogStatus,
   UsageSummary,
   WorkflowMode,
@@ -730,5 +734,80 @@ export interface WorkflowRunRepository {
   /** 重试单个失败步骤：仅重置该步骤并递减 `failedSteps`，批次重新入队。 */
   retryStep(runId: string, stepId: string): Promise<WorkflowRunDetailRecord | null>;
   /** 删除批次（级联清理步骤）；不存在返回 false。 */
+  delete(runId: string): Promise<boolean>;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                 Change 5：创作工具盒运行历史（toolbox_runs）                 */
+/* -------------------------------------------------------------------------- */
+
+/** 创作工具盒运行记录（`inputs` / `output` 已由 jsonb 归一为契约结构）。 */
+export interface ToolboxRunRecord {
+  readonly id: string;
+  readonly toolId: ToolboxToolId;
+  /** 关联书籍（删书后历史保留，置为 null） */
+  readonly bookId: string | null;
+  /** 实际执行的写书角色 */
+  readonly role: AgentRole;
+  readonly status: ToolboxRunStatus;
+  /** `validateToolboxInputs` 归一后的输入（含默认值补全） */
+  readonly inputs: ToolboxInputs;
+  /** 规范化结构化产出（失败时为 null） */
+  readonly output: ToolboxOutput | null;
+  readonly modelRef: string | null;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly estimatedCostUsd: number;
+  readonly latencyMs: number;
+  readonly errorCode: ApiErrorCode | null;
+  /** 已脱敏错误摘要（禁止包含明文 API Key） */
+  readonly errorMessage: string | null;
+  readonly createdAt: Date;
+}
+
+/** 追加一条运行记录的入参（`createdAt` 由数据库生成）。 */
+export interface CreateToolboxRunInput {
+  readonly toolId: ToolboxToolId;
+  readonly bookId: string | null;
+  readonly role: AgentRole;
+  readonly status: ToolboxRunStatus;
+  readonly inputs: ToolboxInputs;
+  readonly output: ToolboxOutput | null;
+  readonly modelRef: string | null;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly estimatedCostUsd: number;
+  readonly latencyMs: number;
+  readonly errorCode: ApiErrorCode | null;
+  readonly errorMessage: string | null;
+}
+
+/** 运行历史列表筛选（`createdAt DESC` 分页）。 */
+export interface ToolboxRunListFilter {
+  readonly toolId?: ToolboxToolId | undefined;
+  readonly bookId?: string | undefined;
+  readonly status?: ToolboxRunStatus | undefined;
+  readonly page: number;
+  readonly pageSize: number;
+}
+
+/** 运行历史分页结果。 */
+export interface ToolboxRunPage {
+  readonly items: readonly ToolboxRunRecord[];
+  readonly total: number;
+}
+
+/**
+ * 创作工具盒运行历史仓储。
+ *
+ * 历史记录只追加与删除，**不提供任何写入后修改**：`inputs` / `output` 为执行快照，
+ * 删除历史不影响已回写到 Book Bible 的设定卡与全书总大纲。
+ */
+export interface ToolboxRunRepository {
+  create(input: CreateToolboxRunInput): Promise<ToolboxRunRecord>;
+  findById(runId: string): Promise<ToolboxRunRecord | null>;
+  /** 按 `createdAt DESC` 分页，支持 `toolId` / `bookId` / `status` 筛选。 */
+  list(filter: ToolboxRunListFilter): Promise<ToolboxRunPage>;
+  /** 删除历史记录；不存在返回 false。 */
   delete(runId: string): Promise<boolean>;
 }
