@@ -6,6 +6,7 @@ import { useThemeStore } from './stores/theme';
 import './styles/global.css';
 import './styles/books.css';
 import './styles/workflows.css';
+import './styles/toolbox.css';
 
 const app = createApp(App);
 const pinia = createPinia();

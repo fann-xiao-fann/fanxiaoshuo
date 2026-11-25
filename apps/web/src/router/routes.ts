@@ -18,7 +18,7 @@ export const NAV_ITEMS = [
     key: '/toolbox',
     label: '创作工具盒',
     caption: 'Toolbox',
-    description: '设定抽取、灵感扩写与文本工具（Change 5 规划）',
+    description: 'Schema 驱动的书名、人物、设定与剧情润色工具集',
   },
   {
     key: '/models',
@@ -95,7 +95,7 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ToolboxView.vue'),
         meta: {
           title: '创作工具盒',
-          description: '设定抽取、灵感扩写与文本辅助工具（Change 5）',
+          description: 'Schema 驱动的书名、人物、世界观与剧情工具集，产出可一键回写设定集',
           eyebrow: '创作',
           navKey: '/toolbox',
         } satisfies PageMeta,

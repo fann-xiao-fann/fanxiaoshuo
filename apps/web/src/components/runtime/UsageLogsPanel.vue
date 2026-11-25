@@ -3,6 +3,7 @@ import {
   AGENT_ROLE_LABELS,
   AGENT_ROLES,
   USAGE_SCENES,
+  resolveUsageSceneLabel,
   type AgentRole,
   type UsageLogDto,
   type UsageLogStatus,
@@ -51,18 +52,10 @@ const ROLE_OPTIONS = [
   ...AGENT_ROLES.map((role) => ({ label: AGENT_ROLE_LABELS[role], value: role })),
 ];
 
-const SCENE_LABELS: Record<string, string> = {
-  [USAGE_SCENES.connectivityTest]: '一键测通',
-  [USAGE_SCENES.smokeJob]: '冒烟任务',
-  [USAGE_SCENES.chapterWrite]: '章节成文',
-  [USAGE_SCENES.loreExtract]: '设定抽取',
-  [USAGE_SCENES.chapterReview]: '审稿质检',
-};
-
 const SCENE_OPTIONS = [
   { label: '全部场景', value: '' },
   ...Object.values(USAGE_SCENES).map((scene) => ({
-    label: SCENE_LABELS[scene] ?? scene,
+    label: resolveUsageSceneLabel(scene),
     value: scene,
   })),
 ];
@@ -203,7 +196,7 @@ const columns: DataTableColumns<UsageLogDto> = [
       h(
         NTag,
         { size: 'small', round: true, bordered: false, type: 'default' },
-        { default: () => SCENE_LABELS[row.scene] ?? row.scene },
+        { default: () => resolveUsageSceneLabel(row.scene) },
       ),
   },
   {
@@ -299,7 +292,7 @@ onMounted(() => {
       <div>
         <div class="fx-panel__title">用量日志与成本汇总</div>
         <div class="fx-panel__subtitle">
-          Append-only 审计账本：每次模型调用（测通、冒烟任务与后续成文）都会记录 Token、估算费用、延迟与脱敏错误。
+          Append-only 审计账本：每次模型调用（测通、冒烟任务、章节成文、审稿质检与创作工具盒）都会记录 Token、估算费用、延迟与脱敏错误。
           汇总卡片按当前筛选区间统计。
         </div>
       </div>
@@ -348,7 +341,7 @@ onMounted(() => {
         <div class="fx-kpi">
           <div class="fx-kpi__label">成功率</div>
           <div class="fx-kpi__value">{{ successRate }}</div>
-          <div class="fx-kpi__hint">含测通与冒烟任务</div>
+          <div class="fx-kpi__hint">含全部 7 类调用场景</div>
         </div>
       </div>
     </div>
