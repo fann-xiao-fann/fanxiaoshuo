@@ -3,9 +3,13 @@ import type { HealthProbes } from './health/probes.js';
 import type { JobEventBus, SmokeQueue } from './queue/types.js';
 import type {
   AgentRoleRepository,
+  BookRepository,
+  ChapterRepository,
+  ChapterRevisionRepository,
   ModelRepository,
   ProviderRepository,
   UsageLogRepository,
+  VolumeRepository,
 } from './repositories/types.js';
 import type { ModelGateway } from '@fanxiaoshuo/agents';
 
@@ -34,6 +38,21 @@ export interface ServerDependencies {
   readonly smokeQueue: SmokeQueue;
   readonly eventBus: JobEventBus;
   readonly health: HealthProbes;
+  /** 书库仓储（书籍 CRUD / 回收站 / 整本导出） */
+  readonly books: BookRepository;
+  /** 分卷仓储（卷章树 / 排序 / 软删恢复） */
+  readonly volumes: VolumeRepository;
+  /** 章节仓储（元信息、正文乐观锁保存、重排与跨卷移动） */
+  readonly chapters: ChapterRepository;
+  /** 章节历史快照仓储（手动 / 自动节流 / 安全回滚） */
+  readonly chapterRevisions: ChapterRevisionRepository;
+  /**
+   * 自动快照节流间隔（毫秒）。默认 `AUTO_REVISION_INTERVAL_MS`（5 分钟），
+   * 测试可注入极小值以覆盖「节流触发 / 节流跳过」两条分支。
+   */
+  readonly autoRevisionIntervalMs?: number | undefined;
+  /** 可注入时钟（测试可控），默认系统当前时间。 */
+  readonly clock?: (() => Date) | undefined;
   /** SSE 心跳注释间隔（默认 15s；测试可缩短） */
   readonly sseHeartbeatMs?: number | undefined;
 }

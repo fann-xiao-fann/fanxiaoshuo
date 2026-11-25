@@ -4,11 +4,16 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { ApiError, isForeignKeyViolation, isUniqueViolation, toApiError, validationErrorFromZod } from './errors.js';
 import { registerAgentRoleRoutes } from './routes/agent-roles.js';
+import { registerBookTreeRoutes } from './routes/book-tree.js';
+import { registerBookRoutes } from './routes/books.js';
+import { registerChapterRevisionRoutes } from './routes/chapter-revisions.js';
+import { registerChapterRoutes } from './routes/chapters.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerModelRoutes } from './routes/models.js';
 import { registerProviderRoutes } from './routes/providers.js';
 import { registerRuntimeRoutes } from './routes/runtime.js';
 import { registerUsageLogRoutes } from './routes/usage-logs.js';
+import { registerVolumeRoutes } from './routes/volumes.js';
 import type { ServerDependencies } from './server-deps.js';
 
 /** 归一化 Fastify 内置客户端错误（如非法 JSON body）为统一 400。 */
@@ -83,6 +88,13 @@ export async function buildServer(deps: ServerDependencies): Promise<FastifyInst
   registerAgentRoleRoutes(app, deps);
   registerUsageLogRoutes(app, deps);
   registerRuntimeRoutes(app, deps);
+
+  // Change 2：书库 / 卷章树 / 章节正文与历史快照 / 整本导出
+  registerBookRoutes(app, deps);
+  registerBookTreeRoutes(app, deps);
+  registerVolumeRoutes(app, deps);
+  registerChapterRoutes(app, deps);
+  registerChapterRevisionRoutes(app, deps);
 
   return app;
 }

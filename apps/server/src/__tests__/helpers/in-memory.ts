@@ -20,6 +20,16 @@ import type { ServerDependencies } from '../../server-deps.js';
 import { createSecretCodec, type SecretCodec } from '../../crypto/secret-codec.js';
 import { buildServer } from '../../server.js';
 import { ModelGateway } from '@fanxiaoshuo/agents';
+import {
+  createInMemoryBookRepositories,
+  type InMemoryBookState,
+} from './in-memory-books.js';
+import type {
+  BookRepository,
+  ChapterRepository,
+  ChapterRevisionRepository,
+  VolumeRepository,
+} from '../../repositories/types.js';
 
 /** 测试主密钥（32 字节 hex，仅为测试固定值）。 */
 export const TEST_ENCRYPTION_KEY = 'a'.repeat(64);
@@ -32,6 +42,12 @@ export interface InMemoryStore {
   readonly models: ModelRepository;
   readonly agentRoles: AgentRoleRepository;
   readonly usageLogs: UsageLogRepository;
+  readonly books: BookRepository;
+  readonly volumes: VolumeRepository;
+  readonly chapters: ChapterRepository;
+  readonly chapterRevisions: ChapterRevisionRepository;
+  /** 服务端与内存仓储共用的时钟（测试可通过 `clock` 选项注入可控时间）。 */
+  readonly clock: () => Date;
   readonly state: {
     readonly providers: Map<string, ProviderRecord>;
     readonly models: Map<string, ModelRecord>;
@@ -40,6 +56,10 @@ export interface InMemoryStore {
       { modelId: string; temperature: number; maxTokens: number | null; updatedAt: Date }
     >;
     readonly logs: UsageLogRecord[];
+    readonly books: InMemoryBookState['books'];
+    readonly volumes: InMemoryBookState['volumes'];
+    readonly chapters: InMemoryBookState['chapters'];
+    readonly revisions: InMemoryBookState['revisions'];
   };
 }
 
@@ -60,6 +80,8 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
     { modelId: string; temperature: number; maxTokens: number | null; updatedAt: Date }
   >();
   const logs: UsageLogRecord[] = [];
+
+  const bookRepositories = createInMemoryBookRepositories({ now });
 
   const providerRepository: ProviderRepository = {
     async list() {
@@ -271,7 +293,21 @@ export function createInMemoryStore(options: { now?: () => Date } = {}): InMemor
     models: modelRepository,
     agentRoles: agentRoleRepository,
     usageLogs: usageLogRepository,
-    state: { providers: providerMap, models: modelMap, roles: roleMap, logs },
+    books: bookRepositories.books,
+    volumes: bookRepositories.volumes,
+    chapters: bookRepositories.chapters,
+    chapterRevisions: bookRepositories.chapterRevisions,
+    clock: now,
+    state: {
+      providers: providerMap,
+      models: modelMap,
+      roles: roleMap,
+      logs,
+      books: bookRepositories.state.books,
+      volumes: bookRepositories.state.volumes,
+      chapters: bookRepositories.state.chapters,
+      revisions: bookRepositories.state.revisions,
+    },
   };
 }
 
@@ -374,6 +410,10 @@ export interface TestServerOptions {
   readonly eventBus?: FakeEventBus;
   readonly health?: HealthProbes;
   readonly sseHeartbeatMs?: number;
+  /** 可控时钟（与内存仓储共用，便于测试自动快照节流） */
+  readonly clock?: () => Date;
+  /** 自动快照节流间隔（默认共享常量 5 分钟） */
+  readonly autoRevisionIntervalMs?: number;
 }
 
 export interface TestServerContext {
@@ -386,7 +426,8 @@ export interface TestServerContext {
 
 /** 组装可 `app.inject()` 的完整测试服务器。 */
 export async function createTestServer(options: TestServerOptions = {}): Promise<TestServerContext> {
-  const store = options.store ?? createInMemoryStore();
+  const store =
+    options.store ?? createInMemoryStore(options.clock ? { now: options.clock } : {});
   const smokeQueue = options.smokeQueue ?? createFakeSmokeQueue();
   const eventBus = options.eventBus ?? createFakeEventBus();
 
@@ -402,10 +443,18 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
     models: store.models,
     agentRoles: store.agentRoles,
     usageLogs: store.usageLogs,
+    books: store.books,
+    volumes: store.volumes,
+    chapters: store.chapters,
+    chapterRevisions: store.chapterRevisions,
     gateway: options.gateway ?? new ModelGateway(),
     smokeQueue,
     eventBus,
     health: options.health ?? createHealthyProbes(),
+    clock: options.clock ?? store.clock,
+    ...(options.autoRevisionIntervalMs === undefined
+      ? {}
+      : { autoRevisionIntervalMs: options.autoRevisionIntervalMs }),
     sseHeartbeatMs: options.sseHeartbeatMs ?? 50,
   };
 

@@ -12,9 +12,13 @@ import { createHealthProbes } from './health/probes.js';
 import { createBullMqSmokeQueue } from './queue/bullmq-smoke-queue.js';
 import { createRedisJobEventBus } from './queue/redis-event-bus.js';
 import { createDrizzleAgentRoleRepository } from './repositories/drizzle/agent-role-repository.js';
+import { createDrizzleBookRepository } from './repositories/drizzle/book-repository.js';
+import { createDrizzleChapterRepository } from './repositories/drizzle/chapter-repository.js';
+import { createDrizzleChapterRevisionRepository } from './repositories/drizzle/chapter-revision-repository.js';
 import { createDrizzleModelRepository } from './repositories/drizzle/model-repository.js';
 import { createDrizzleProviderRepository } from './repositories/drizzle/provider-repository.js';
 import { createDrizzleUsageLogRepository } from './repositories/drizzle/usage-log-repository.js';
+import { createDrizzleVolumeRepository } from './repositories/drizzle/volume-repository.js';
 import { buildServer } from './server.js';
 import { DEFAULT_SERVER_VERSION } from './server-deps.js';
 
@@ -60,6 +64,10 @@ export async function startServer(): Promise<RunningServer> {
   const models = createDrizzleModelRepository(db);
   const agentRoles = createDrizzleAgentRoleRepository(db);
   const usageLogs = createDrizzleUsageLogRepository(db);
+  const books = createDrizzleBookRepository(db);
+  const volumes = createDrizzleVolumeRepository(db);
+  const chapters = createDrizzleChapterRepository(db);
+  const chapterRevisions = createDrizzleChapterRevisionRepository(db);
 
   const gateway = new ModelGateway({
     usageLogger: async (record) => {
@@ -82,6 +90,10 @@ export async function startServer(): Promise<RunningServer> {
     models,
     agentRoles,
     usageLogs,
+    books,
+    volumes,
+    chapters,
+    chapterRevisions,
     gateway,
     smokeQueue,
     eventBus,

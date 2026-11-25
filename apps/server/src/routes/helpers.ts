@@ -56,3 +56,18 @@ export function parseOptionalUuidQuery(value: unknown, field: string): string | 
   }
   return parsed.data;
 }
+
+/**
+ * 查询串布尔开关（如 `?permanent=true`）。
+ * 仅接受缺省 / `true` / `false`（兼容 Fastify 解析出的原生 boolean），其余一律 400。
+ */
+export function parseBooleanQuery(query: unknown, field: string): boolean {
+  const raw = (query as Record<string, unknown> | undefined)?.[field];
+  if (raw === undefined || raw === null || raw === '' || raw === false || raw === 'false') {
+    return false;
+  }
+  if (raw === true || raw === 'true') {
+    return true;
+  }
+  throw invalidParam(field, `${field} 只能是 true 或 false`);
+}
