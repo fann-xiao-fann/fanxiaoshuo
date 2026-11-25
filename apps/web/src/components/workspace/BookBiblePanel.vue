@@ -23,6 +23,7 @@ import {
 } from 'naive-ui';
 import {
   AddOutline,
+  ColorWandOutline,
   CreateOutline,
   SearchOutline,
   Star,
@@ -30,6 +31,7 @@ import {
   TrashOutline,
 } from '@vicons/ionicons5';
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { describeError } from '@/api/errors';
 import { useBookBibleStore } from '@/stores/book-bible';
 import { useBookWorkspaceStore } from '@/stores/book-workspace';
@@ -37,8 +39,15 @@ import { formatDateTime } from '@/utils/format';
 
 const bibles = useBookBibleStore();
 const workspace = useBookWorkspaceStore();
+const router = useRouter();
 const message = useMessage();
 const dialog = useDialog();
+
+/** 携当前作品直达创作工具盒（预选关联作品上下文）。 */
+function goToToolbox(): void {
+  const bookId = workspace.book?.id ?? workspace.bookId;
+  void router.push(bookId === null ? '/toolbox' : `/toolbox?bookId=${bookId}`);
+}
 
 type BibleView = 'cards' | 'outline';
 const view = ref<BibleView>('cards');
@@ -298,6 +307,16 @@ async function saveOutlineDraft(): Promise<void> {
 
 <template>
   <section class="fx-assistant__section">
+    <div class="fx-assistant__field-row" style="justify-content: space-between; align-items: center">
+      <span class="fx-tertiary" style="font-size: 11px; letter-spacing: 0.06em">作品设定集</span>
+      <n-button size="tiny" quaternary :title="'在创作工具盒中生成并回写设定'" @click="goToToolbox">
+        <template #icon>
+          <n-icon><color-wand-outline /></n-icon>
+        </template>
+        工具盒生成
+      </n-button>
+    </div>
+
     <div class="fx-subtabs" role="tablist" aria-label="设定集子视图">
       <button
         type="button"

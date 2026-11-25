@@ -48,7 +48,7 @@ function scrollToSection(id: string): void {
               运行期观测台
             </div>
             <div class="fx-panel__subtitle">
-              汇总基础设施健康、Mastra + BullMQ 冒烟验证与统一网关的 Token / 费用账本。
+              汇总基础设施健康、Mastra + BullMQ 冒烟验证与批量流水线队列、统一网关的 Token / 费用账本。
               本页所有诊断均为只读探测，不会修改业务数据。
             </div>
           </div>
@@ -77,11 +77,23 @@ function scrollToSection(id: string): void {
             <div class="fx-kpi__hint">BullMQ · Redis</div>
           </div>
           <div class="fx-kpi">
-            <div class="fx-kpi__label">事件频道</div>
+            <div class="fx-kpi__label">批量流水线队列</div>
+            <div class="fx-kpi__value" style="font-size: 14px">{{ QUEUE_NAMES.novelWorkflows }}</div>
+            <div class="fx-kpi__hint">多 Agent 批量成文队列</div>
+          </div>
+          <div class="fx-kpi">
+            <div class="fx-kpi__label">任务事件频道</div>
             <div class="fx-kpi__value" style="font-size: 14px; overflow-wrap: anywhere">
               {{ REDIS_CHANNELS.jobEvents }}
             </div>
             <div class="fx-kpi__hint">Redis Pub/Sub → SSE</div>
+          </div>
+          <div class="fx-kpi">
+            <div class="fx-kpi__label">流水线事件频道</div>
+            <div class="fx-kpi__value" style="font-size: 14px; overflow-wrap: anywhere">
+              {{ REDIS_CHANNELS.workflowEvents }}
+            </div>
+            <div class="fx-kpi__hint">批次 / 步骤实时进度推送</div>
           </div>
           <div class="fx-kpi">
             <div class="fx-kpi__label">Worker 心跳</div>

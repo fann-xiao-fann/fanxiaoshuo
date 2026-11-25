@@ -63,7 +63,7 @@ describe('工作台路由壳', () => {
     expect(router.currentRoute.value.name).toBe('book-workspace');
   });
 
-  it('批量流水线控制台已上线，创作工具盒仍为后续变更占位页', async () => {
+  it('批量流水线控制台与创作工具盒均已上线并挂载导航元信息', async () => {
     const router = createTestRouter();
 
     expect(router.resolve('/workflows').name).toBe('workflows');
@@ -78,26 +78,51 @@ describe('工作台路由壳', () => {
     await router.push('/toolbox');
     expect(router.currentRoute.value.name).toBe('toolbox');
     expect(router.currentRoute.value.meta.navKey).toBe('/toolbox');
-    expect(String(router.currentRoute.value.meta.description)).toContain('Change 5');
+    expect(router.currentRoute.value.meta.title).toBe('创作工具盒');
+    expect(String(router.currentRoute.value.meta.description)).toContain('Schema 驱动');
+    expect(String(router.currentRoute.value.meta.description)).toContain('回写');
   });
 
-  it('侧边导航描述去掉 Change 4 规划占位字样，保留 Change 5 占位', () => {
-    const workflows = NAV_ITEMS.find((item) => item.key === '/workflows');
+  it('侧边导航描述全部为正式功能描述，不含任何规划占位字样', () => {
+    const forbidden = ['Change', '规划', '占位', '待上线', '敬请期待'];
+
+    for (const item of NAV_ITEMS) {
+      expect(item.description.trim().length).toBeGreaterThan(0);
+      for (const token of forbidden) {
+        expect(item.description).not.toContain(token);
+      }
+    }
+
     const toolbox = NAV_ITEMS.find((item) => item.key === '/toolbox');
-
-    expect(workflows?.description).not.toContain('Change 4');
-    expect(workflows?.description).not.toContain('规划');
-    expect(workflows?.description).toContain('实时进度');
-    expect(toolbox?.description).toContain('Change 5');
+    expect(toolbox?.description).toContain('Schema 驱动');
   });
 
-  it('四条完整能力页面与一个占位页已注册', () => {
+  it('五大导航模块的路由描述均已去掉占位字样', () => {
     const router = createTestRouter();
-    expect(router.resolve('/books').name).toBe('books');
-    expect(router.resolve('/models').name).toBe('models');
-    expect(router.resolve('/runtime').name).toBe('runtime');
-    expect(router.resolve('/workflows').name).toBe('workflows');
-    expect(router.resolve('/toolbox').name).toBe('toolbox');
+    const forbidden = ['Change', '规划', '占位', '待上线', '敬请期待'];
+
+    for (const item of NAV_ITEMS) {
+      const resolved = router.resolve(item.key);
+      const description = String(resolved.meta.description);
+
+      expect(resolved.meta.navKey).toBe(item.key);
+      expect(description.trim().length).toBeGreaterThan(0);
+      for (const token of forbidden) {
+        expect(description).not.toContain(token);
+      }
+    }
+  });
+
+  it('五大完整能力页面均已注册完整视图组件', () => {
+    const router = createTestRouter();
+
+    for (const key of ['/books', '/workflows', '/toolbox', '/models', '/runtime']) {
+      const resolved = router.resolve(key);
+      const record = resolved.matched[resolved.matched.length - 1];
+
+      expect(record).toBeDefined();
+      expect(Object.keys(record?.components ?? {})).toContain('default');
+    }
   });
 
   it('未知路径命中 404 回退路由而非白屏', async () => {
