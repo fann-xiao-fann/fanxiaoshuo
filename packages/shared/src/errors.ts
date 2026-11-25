@@ -55,6 +55,10 @@ export const API_ERROR_CODES = {
   CHAPTER_VERSION_CONFLICT: 'CHAPTER_VERSION_CONFLICT',
   /** 章节历史快照不存在 */
   REVISION_NOT_FOUND: 'REVISION_NOT_FOUND',
+  /** 设定卡不存在（或不属于目标书籍） */
+  KNOWLEDGE_CARD_NOT_FOUND: 'KNOWLEDGE_CARD_NOT_FOUND',
+  /** AI 写作 / 摘要提炼缺少可用上下文（无选区且无正文，或正文为空） */
+  AI_EMPTY_CONTEXT: 'AI_EMPTY_CONTEXT',
 } as const;
 
 export type ApiErrorCode = keyof typeof API_ERROR_CODES;
@@ -94,6 +98,8 @@ export const API_ERROR_HTTP_STATUS: Record<ApiErrorCode, number> = {
   CHAPTER_NOT_FOUND: 404,
   CHAPTER_VERSION_CONFLICT: 409,
   REVISION_NOT_FOUND: 404,
+  KNOWLEDGE_CARD_NOT_FOUND: 404,
+  AI_EMPTY_CONTEXT: 400,
 };
 
 /** 字段级校验问题（由 ZodError.issues 投影而来，路径用 `.` 连接）。 */

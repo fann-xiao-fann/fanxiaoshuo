@@ -6,6 +6,7 @@
  */
 export * from './constants/agent-roles.js';
 export * from './constants/books.js';
+export * from './constants/book-bible.js';
 export * from './constants/provider-protocols.js';
 export * from './constants/runtime.js';
 
@@ -24,3 +25,5 @@ export * from './schemas/book.js';
 export * from './schemas/volume.js';
 export * from './schemas/chapter.js';
 export * from './schemas/chapter-revision.js';
+export * from './schemas/book-bible.js';
+export * from './schemas/ai-writer.js';

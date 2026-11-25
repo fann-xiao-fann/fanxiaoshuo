@@ -45,6 +45,34 @@ import {
   usageLogStatusSchema,
   volumeDtoSchema,
 } from '../index.js';
+import {
+  AI_APPLY_MODES,
+  AI_STREAM_EVENT_NAMES,
+  AI_WRITE_ACTIONS,
+  DEFAULT_MAX_CONTEXT_TOKENS,
+  KNOWLEDGE_CARD_CATEGORIES,
+  MAX_RECALLED_CARDS,
+  aiChapterStreamRequestSchema,
+  aiContextPreviewRequestSchema,
+  aiContextPreviewResponseSchema,
+  aiStreamDeltaEventSchema,
+  aiStreamDoneEventSchema,
+  aiStreamErrorEventSchema,
+  aiStreamStartEventSchema,
+  applyAiChapterContentResponseSchema,
+  applyAiChapterContentSchema,
+  bookOutlineDtoSchema,
+  chapterSummaryDtoSchema,
+  createKnowledgeCardSchema,
+  extractChapterSummaryResponseSchema,
+  extractChapterSummarySchema,
+  knowledgeCardDtoSchema,
+  knowledgeCardListQuerySchema,
+  knowledgeCardListResponseSchema,
+  updateKnowledgeCardSchema,
+  upsertBookOutlineSchema,
+  upsertChapterSummarySchema,
+} from '../index.js';
 
 describe('barrel 导出（前后端 / Worker 统一入口）', () => {
   it('导出全部契约常量与 schema', () => {
@@ -138,5 +166,39 @@ describe('运行期常量契约', () => {
 
   it('SSE 帧名可供前端 EventSource 复用', () => {
     expect(SSE_EVENT_NAMES.jobEvent).toBe('job-event');
+  });
+});
+
+describe('Change 3 设定集 / AI 写作契约 barrel 导出', () => {
+  it('导出 Book Bible 领域枚举与上下文预算常量', () => {
+    expect(KNOWLEDGE_CARD_CATEGORIES).toHaveLength(6);
+    expect(AI_WRITE_ACTIONS).toHaveLength(4);
+    expect(AI_APPLY_MODES).toHaveLength(3);
+    expect(AI_STREAM_EVENT_NAMES.delta).toBe('delta');
+    expect(DEFAULT_MAX_CONTEXT_TOKENS).toBe(8_000);
+    expect(MAX_RECALLED_CARDS).toBe(8);
+  });
+
+  it('导出 Book Bible 与 AI 写作全部 Zod Schema', () => {
+    expect(bookOutlineDtoSchema).toBeDefined();
+    expect(upsertBookOutlineSchema).toBeDefined();
+    expect(knowledgeCardDtoSchema).toBeDefined();
+    expect(knowledgeCardListQuerySchema).toBeDefined();
+    expect(knowledgeCardListResponseSchema).toBeDefined();
+    expect(createKnowledgeCardSchema).toBeDefined();
+    expect(updateKnowledgeCardSchema).toBeDefined();
+    expect(chapterSummaryDtoSchema).toBeDefined();
+    expect(upsertChapterSummarySchema).toBeDefined();
+    expect(extractChapterSummarySchema).toBeDefined();
+    expect(extractChapterSummaryResponseSchema).toBeDefined();
+    expect(aiContextPreviewRequestSchema).toBeDefined();
+    expect(aiContextPreviewResponseSchema).toBeDefined();
+    expect(aiChapterStreamRequestSchema).toBeDefined();
+    expect(aiStreamStartEventSchema).toBeDefined();
+    expect(aiStreamDeltaEventSchema).toBeDefined();
+    expect(aiStreamDoneEventSchema).toBeDefined();
+    expect(aiStreamErrorEventSchema).toBeDefined();
+    expect(applyAiChapterContentSchema).toBeDefined();
+    expect(applyAiChapterContentResponseSchema).toBeDefined();
   });
 });
