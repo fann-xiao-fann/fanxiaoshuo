@@ -2,7 +2,7 @@
 
 面向内部批量网文创作的 **AI 工作台**：用一组分工明确的写书 Agent 串起「立项起盘 → 设定集维护 → 拆细纲 → 逐章成文 → 审稿返工 → 校审导出」流水线，并提供模型配置、Token/费用计量与基础设施健康诊断。
 
-> 本仓库为 **pnpm + TypeScript（strict）Monorepo**。当前已完成 **Change 1**（工作区骨架 / 契约 / 模型配置中心 / 运行期底座 / 工作台外壳）、**Change 2**（书架书库、卷章目录树、TipTap 长文编辑器、历史快照与安全回滚、整本导出 TXT/MD）与 **Change 3**（Book Bible 设定记忆层、预算感知上下文组装、编辑器内流式 AI 写作与原子 AI 快照留底应用）。
+> 本仓库为 **pnpm + TypeScript（strict）Monorepo**。当前已完成 **Change 1**（工作区骨架 / 契约 / 模型配置中心 / 运行期底座 / 工作台外壳）、**Change 2**（书架书库、卷章目录树、TipTap 长文编辑器、历史快照与安全回滚、整本导出 TXT/MD）、**Change 3**（Book Bible 设定记忆层、预算感知上下文组装、编辑器内流式 AI 写作与原子 AI 快照留底应用）与 **Change 4**（多 Agent 批量写书流水线引擎：`showrunner` 拆细纲 → `writer` 逐章成文 → `critic` 审稿返工闭环 → `lorekeeper` 摘要提炼、预算熔断、暂停/断点续跑/取消/单步重试与 `/workflows` 实时控制台）。
 
 ---
 
@@ -25,8 +25,8 @@ fanxiaoshuo/
 ├─ packages/shared/   # 契约包：Zod Schema、DTO、事件与错误码（先行冻结）
 ├─ packages/agents/   # 统一 LLM 网关（计量/费用/脱敏）+ Mastra 运行时与角色定义
 ├─ apps/server/       # Fastify REST/SSE API、Drizzle Schema 与迁移
-├─ apps/worker/       # BullMQ Worker、心跳上报、冒烟任务执行
-├─ apps/web/          # Vue 3 工作台 UI（书架 / 卷章树 / TipTap 编辑器 / 模型配置 / 用量与状态）
+├─ apps/worker/       # BullMQ Worker（冒烟任务 + novel-workflows 批量流水线）、心跳上报与事件广播
+├─ apps/web/          # Vue 3 工作台 UI（书架 / 卷章树 / TipTap 编辑器 / 批量流水线 / 模型配置 / 用量与状态）
 ├─ infra/             # docker-compose.yml、init-db.sql
 └─ openspec/          # 规格（specs）与进行中变更（changes）
 ```
@@ -86,7 +86,7 @@ pnpm env:init
 # 2）启动 PostgreSQL(pgvector) + Redis 容器
 pnpm docker:up
 
-# 3）执行数据库迁移（创建全部 11 张核心表，含 pgvector 向量列；可重复执行，幂等）
+# 3）执行数据库迁移（创建全部 13 张核心表，含 pgvector 向量列与批量流水线表；可重复执行，幂等）
 pnpm db:migrate
 
 # 4）同时启动 server + worker + web 开发进程
@@ -97,11 +97,12 @@ pnpm dev
 
 | 服务 | 地址 |
 |---|---|
-| 工作台前端 | http://127.0.0.1:5173 （书架：`/books`；写作工作区：`/books/:bookId/:chapterId?`；模型配置：`/models`；用量与状态：`/runtime`） |
+| 工作台前端 | http://127.0.0.1:5173 （书架：`/books`；写作工作区：`/books/:bookId/:chapterId?`；批量流水线：`/workflows`；模型配置：`/models`；用量与状态：`/runtime`） |
 | Fastify API | http://127.0.0.1:3001 |
 | 健康检查 | http://127.0.0.1:3001/api/v1/health |
 | 用量日志 | http://127.0.0.1:3001/api/v1/usage-logs |
-| SSE 事件流 | http://127.0.0.1:3001/api/v1/runtime/events |
+| 运行期 SSE | http://127.0.0.1:3001/api/v1/runtime/events |
+| 流水线 SSE | http://127.0.0.1:3001/api/v1/workflows/events |
 
 端口与连接串均可在根目录 `.env` 调整（`API_PORT`、`WEB_PORT`、`DATABASE_URL`、`REDIS_URL`、`WORKER_CONCURRENCY`）。**`.env` 永不入库**；`APP_ENCRYPTION_KEY` 用于 AES-256-GCM 加密 Provider API Key，缺失时服务启动即 fail-fast，更换会导致历史密钥无法解密。
 
@@ -112,6 +113,7 @@ pnpm dev
 3. 为 4 个写书角色绑定默认模型，点击「一键测通」验证连通性（会真实调用并落盘用量日志）。
 4. 打开 `/runtime` 确认 PG / Redis / Worker 诊断卡片全部绿色，触发一次冒烟任务观察 SSE 状态流转。
 5. 打开 `/books` 新建作品 → 进入 `/books/:bookId` 建卷建章 → 在右侧「设定集」维护全书总大纲与 6 类设定卡、在「本章记忆」编写细纲或调用 `lorekeeper` 一键提炼摘要 → 在「AI 写作」预览 Token 预算并发起续写/扩写/改写/润色流式生成，确认后自动留底 `ai` 快照写回正文 → 随时在历史版本一键回滚或「导出」整本 TXT / Markdown。
+6. 打开 `/workflows` 点击「新建批量批次」→ 选择目标作品与章节（或按卷自动建章）、运行模式（`outline_only` / `write_chapters` / `full_pipeline`）、审稿与最大返工轮次、摘要提取与 `maxCostUsd` 费用熔断上限 → 实时观察逐章阶段流转、审稿得分与费用表盘；支持随时暂停、上调预算断点续跑、取消、单步重试，并一键跳回对应章节编辑器审阅。
 
 ---
 
@@ -219,6 +221,20 @@ pnpm --filter @fanxiaoshuo/web run typecheck
 | POST | `/chapters/:chapterId/ai/context-preview` | 预览上下文组装结果（设定卡召回来源、前情摘要、Token 预算与裁剪状态、Prompt 预览） |
 | POST | `/chapters/:chapterId/ai/stream` | 章内流式 AI 写作（`continue` / `expand` / `rewrite` / `polish`，POST+SSE 推送 `start`/`delta`/`done`/`error`，支持中止与用量审计） |
 | POST | `/chapters/:chapterId/ai/apply` | 原子应用 AI 正文（单事务校验 `expectedVersion` → 先留底 `source: 'ai'` 不可变快照 → 更新正文与版本 +1） |
+
+### 多 Agent 批量流水线（Change 4）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/workflows/runs` | 分页筛选批量流水线列表（支持 `bookId` / `status` / `mode` / `page` / `pageSize`） |
+| POST | `/workflows/runs` | 创建批量流水线并入队（前置校验所需角色绑定；支持 `chapterIds` 或 `autoCreateChapters` 互斥建章） |
+| GET | `/workflows/runs/:runId` | 查询批次详情（含配置快照、累计 Token/费用、逐章有序步骤、审稿得分/问题清单与留底快照 ID） |
+| POST | `/workflows/runs/:runId/pause` | 请求暂停（`queued` 立即转 `paused`；`running` 置位暂停标记在安全断点收敛为 `USER_PAUSED`） |
+| POST | `/workflows/runs/:runId/resume` | 断点续跑（支持可选上调 `maxCostUsd`；预算耗尽未上调返回 `402 BUDGET_EXCEEDED`；跳过已完成章节重新入队） |
+| POST | `/workflows/runs/:runId/cancel` | 取消批次（立即或安全断点收敛为 `cancelled`，未执行步骤置 `skipped`，保留已完成章节） |
+| POST | `/workflows/runs/:runId/steps/:stepId/retry` | 重试单个失败/跳过步骤并重新入队继续执行后续章节 |
+| DELETE | `/workflows/runs/:runId` | 删除终态批次记录（`queued` / `running` / `paused` 活跃态拦截返回 `409 WORKFLOW_RUN_ACTIVE`，不删除已生成章节） |
+| GET | `/workflows/events` | 批量流水线 SSE 实时事件流（支持 `?runId=` 过滤，推送 `ready` / `workflow-event` / `ping`） |
 
 ---
 

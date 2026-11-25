@@ -346,8 +346,20 @@ export function createWorkflowJobProcessor(
         });
       } catch (error) {
         if (isBudgetError(error)) {
-          // 预算熔断：不抛给 BullMQ（避免整批重试重复扣费），安全暂停等待上调预算续跑。
-          await deps.store.resetStepToPending(step.id);
+          // 预算熔断：不抛给 BullMQ（避免整批重试重复扣费），并将本步熔断前已产生的部分费用回记到批次账本。
+          const partialCostUsd =
+            error instanceof BudgetExceededError
+              ? Math.max(
+                  0,
+                  Math.round((error.spentCostUsd - control.spentCostUsd) * 1_000_000) / 1_000_000,
+                )
+              : 0;
+          await deps.store.resetStepToPending(
+            step.id,
+            partialCostUsd > 0
+              ? { inputTokens: 0, outputTokens: 0, estimatedCostUsd: partialCostUsd }
+              : undefined,
+          );
           const totals = await deps.store.markRunPaused(runId, 'BUDGET_EXCEEDED');
           await publishRunEvent(run, totals, 'workflow.paused', {
             pauseReason: 'BUDGET_EXCEEDED',

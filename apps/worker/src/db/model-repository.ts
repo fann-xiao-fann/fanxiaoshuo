@@ -146,7 +146,7 @@ export function createModelConfigResolver(
  *
  * 与 `createModelConfigResolver` 的区别：
  * - 只接受角色（批量流水线不指定具体模型，统一由角色绑定驱动）；
- * - 同时返回绑定层的 `temperature`（默认 `0.7`）与 `maxOutputTokens`（取 `llm_models.max_tokens`）。
+ * - 同时返回绑定层的 `temperature`（默认 `0.7`）与 `maxOutputTokens`（取 `agent_role_bindings.max_tokens`）。
  *
  * 启停校验、错误码映射与 API Key 解密逻辑与单模型解析器完全一致；
  * 解密失败 / 停用 / 未绑定均抛出已脱敏的 `WorkerJobError`。

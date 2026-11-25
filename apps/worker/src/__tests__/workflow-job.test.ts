@@ -669,6 +669,9 @@ describe('createWorkflowJobProcessor', () => {
     expect(fake.steps[1]?.status).toBe('pending');
     expect(fake.steps[1]?.stage).toBe('idle');
     expect(fake.persistCalls).toHaveLength(1);
+    // 步内熔断前已产生的增量费用必须回记到批次账本，避免未上调预算就再次续跑重复扣费
+    expect(fake.run.spentCostUsd).toBeCloseTo(5.01, 6);
+    expect(result.spentCostUsd).toBeCloseTo(5.01, 6);
 
     const paused = collector.events.at(-1);
     expect(paused).toMatchObject({
