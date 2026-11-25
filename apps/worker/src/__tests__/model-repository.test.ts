@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { QueryResultRow } from 'pg';
 import { API_ERROR_CODES } from '@fanxiaoshuo/shared';
 import type { QueryExecutor } from '../db/usage-log-writer.js';
-import { createModelConfigResolver } from '../db/model-repository.js';
+import { createModelConfigResolver, createRoleModelResolver } from '../db/model-repository.js';
 import { WorkerJobError } from '../errors.js';
 import { encryptApiKey } from '../security/encryption.js';
 
@@ -138,6 +138,96 @@ describe('createModelConfigResolver', () => {
       thrown = error;
     }
 
+    expect(thrown).toBeInstanceOf(WorkerJobError);
+    expect((thrown as WorkerJobError).code).toBe(API_ERROR_CODES.ENCRYPTION_KEY_INVALID);
+    expect((thrown as Error).message).not.toContain(row.api_key_encrypted);
+  });
+});
+
+interface RoleRow {
+  temperature: string | number | null;
+  max_tokens: number | null;
+}
+
+/** 角色绑定行 = 冒烟模型行 + 推理参数。 */
+function createRoleRow(
+  overrides: Partial<ModelRow & RoleRow> = {},
+): ModelRow & RoleRow {
+  return {
+    ...createRow(),
+    temperature: 0.7,
+    max_tokens: 2048,
+    ...overrides,
+  };
+}
+
+describe('createRoleModelResolver', () => {
+  it('按角色解析并带出 temperature 与 maxOutputTokens', async () => {
+    const executor = createExecutor([createRoleRow({ temperature: 1.1, max_tokens: 4096 })]);
+    const resolve = createRoleModelResolver(executor, KEY);
+
+    const model = await resolve('writer');
+
+    expect(model.config).toMatchObject({
+      providerName: 'fixture-provider',
+      apiKey: API_KEY,
+      modelId: 'gpt-4o-mini',
+      inputPricePer1m: 0.15,
+      outputPricePer1m: 0.6,
+    });
+    expect(model.temperature).toBeCloseTo(1.1, 6);
+    expect(model.maxOutputTokens).toBe(4096);
+    expect(executor.calls[0]?.text).toContain('FROM agent_role_bindings b');
+    expect(executor.calls[0]?.text).toContain('b.temperature');
+    expect(executor.calls[0]?.text).toContain('b.max_tokens');
+    expect(executor.calls[0]?.values).toEqual(['writer']);
+  });
+
+  it('temperature 缺省回退 0.7，非法 / 空缺 max_tokens 归一化为 null', async () => {
+    const executor = createExecutor([
+      createRoleRow({ temperature: null, max_tokens: 0 }),
+    ]);
+    const resolve = createRoleModelResolver(executor, KEY);
+
+    const model = await resolve('critic');
+
+    expect(model.temperature).toBe(0.7);
+    expect(model.maxOutputTokens).toBeNull();
+  });
+
+  it('温度越界被钳制到 [0, 2]', async () => {
+    const executor = createExecutor([createRoleRow({ temperature: '9' })]);
+    const resolve = createRoleModelResolver(executor, KEY);
+
+    const model = await resolve('showrunner');
+
+    expect(model.temperature).toBe(2);
+  });
+
+  it('未绑定 / 停用 / 解密失败映射共享错误码且不泄露密文', async () => {
+    await expect(
+      createRoleModelResolver(createExecutor([]), KEY)('lorekeeper'),
+    ).rejects.toMatchObject({ code: API_ERROR_CODES.AGENT_ROLE_UNBOUND });
+
+    await expect(
+      createRoleModelResolver(createExecutor([createRoleRow({ provider_enabled: false })]), KEY)(
+        'writer',
+      ),
+    ).rejects.toMatchObject({ code: API_ERROR_CODES.PROVIDER_DISABLED });
+
+    await expect(
+      createRoleModelResolver(createExecutor([createRoleRow({ model_enabled: false })]), KEY)(
+        'writer',
+      ),
+    ).rejects.toMatchObject({ code: API_ERROR_CODES.MODEL_DISABLED });
+
+    const row = createRoleRow({ api_key_encrypted: 'v1:0f:0f:0f' });
+    let thrown: unknown;
+    try {
+      await createRoleModelResolver(createExecutor([row]), KEY)('writer');
+    } catch (error) {
+      thrown = error;
+    }
     expect(thrown).toBeInstanceOf(WorkerJobError);
     expect((thrown as WorkerJobError).code).toBe(API_ERROR_CODES.ENCRYPTION_KEY_INVALID);
     expect((thrown as Error).message).not.toContain(row.api_key_encrypted);
