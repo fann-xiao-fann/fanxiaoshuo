@@ -19,6 +19,12 @@ function toNumber(value: string | number | null | undefined): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+/** 将 float8 聚合结果收敛为安全非负整数，满足 `z.number().int().nonnegative()` 校验。 */
+function toSafeInteger(value: string | number | null | undefined): number {
+  const parsed = toNumber(value);
+  return Number.isFinite(parsed) && parsed <= Number.MAX_SAFE_INTEGER ? Math.trunc(parsed) : 0;
+}
+
 export function mapUsageLogRow(row: LlmUsageLogRow): UsageLogRecord {
   return {
     id: row.id,
@@ -93,8 +99,9 @@ export function createDrizzleUsageLogRepository(db: Database): UsageLogRepositor
           totalRequests: sql<number>`count(*)::int`,
           successRequests: sql<number>`(count(*) filter (where ${llmUsageLogs.status} = 'success'))::int`,
           errorRequests: sql<number>`(count(*) filter (where ${llmUsageLogs.status} = 'error'))::int`,
-          totalInputTokens: sql<number>`coalesce(sum(${llmUsageLogs.inputTokens}), 0)::int`,
-          totalOutputTokens: sql<number>`coalesce(sum(${llmUsageLogs.outputTokens}), 0)::int`,
+          // 使用 float8 聚合，避免 int4 上限（约 21 亿）在大批量产文后溢出；映射层再收敛为安全整数。
+          totalInputTokens: sql<number>`coalesce(sum(${llmUsageLogs.inputTokens}), 0)::float8`,
+          totalOutputTokens: sql<number>`coalesce(sum(${llmUsageLogs.outputTokens}), 0)::float8`,
           totalCostUsd: sql<number>`coalesce(sum(${llmUsageLogs.estimatedCostUsd}), 0)::float8`,
         })
         .from(llmUsageLogs)
@@ -104,8 +111,8 @@ export function createDrizzleUsageLogRepository(db: Database): UsageLogRepositor
         totalRequests: summaryRow?.totalRequests ?? 0,
         successRequests: summaryRow?.successRequests ?? 0,
         errorRequests: summaryRow?.errorRequests ?? 0,
-        totalInputTokens: summaryRow?.totalInputTokens ?? 0,
-        totalOutputTokens: summaryRow?.totalOutputTokens ?? 0,
+        totalInputTokens: toSafeInteger(summaryRow?.totalInputTokens),
+        totalOutputTokens: toSafeInteger(summaryRow?.totalOutputTokens),
         totalCostUsd: toNumber(summaryRow?.totalCostUsd),
       };
 
